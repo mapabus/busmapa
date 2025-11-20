@@ -28,9 +28,71 @@ export default function handler(req, res) {
         .marker-red { background-color: #e74c3c; }
         .marker-blue { background-color: #3498db; }
         .marker-gray { background-color: #95a5a6; }
+        
+        /* Stil za loading karticu */
+        .loading-card {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 30px 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            text-align: center;
+            z-index: 1000;
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .loading-card.hidden {
+            display: none;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Stil za refresh tajmer */
+        .refresh-timer {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 999;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .refresh-timer strong {
+            color: #3498db;
+        }
     </style>
 </head>
 <body>
+ 
+    <div id="loadingCard" class="loading-card">
+        <div class="spinner"></div>
+        <div>Učitavanje...</div>
+    </div>
+    
+    <div class="refresh-timer">
+        Sledeće ažuriranje za: <strong id="timer">30</strong>s
+    </div>
  
     <div id="map"></div>
  
@@ -47,14 +109,24 @@ export default function handler(req, res) {
         var sviPodaci = []; 
         
         const url = '/api/proxy';
+        const REFRESH_INTERVAL = 30000; // 30 sekundi
+        var refreshTimer;
+        var countdown;
+        var remainingSeconds = 30;
  
         function ucitajAutobuse() {
+            // Prikaži loading karticu
+            document.getElementById('loadingCard').classList.remove('hidden');
+            
             fetch(url)
                 .then(response => {
                     if (!response.ok) throw new Error('Mreža nije dostupna');
                     return response.json();
                 })
                 .then(data => {
+                    // Sakrij loading karticu
+                    document.getElementById('loadingCard').classList.add('hidden');
+                    
                     if (data && data.entity) {
                         sviPodaci = data.entity;
                         nacrtajMarkere();
@@ -62,6 +134,7 @@ export default function handler(req, res) {
                 })
                 .catch(error => {
                     console.error('Greška:', error);
+                    document.getElementById('loadingCard').classList.add('hidden');
                     alert('Greška pri učitavanju podataka. Proverite konzolu.');
                 });
         }
@@ -105,8 +178,32 @@ export default function handler(req, res) {
                 }
             });
         }
+        
+        function startCountdown() {
+            remainingSeconds = 30;
+            document.getElementById('timer').textContent = remainingSeconds;
+            
+            countdown = setInterval(function() {
+                remainingSeconds--;
+                document.getElementById('timer').textContent = remainingSeconds;
+                
+                if (remainingSeconds <= 0) {
+                    clearInterval(countdown);
+                }
+            }, 1000);
+        }
+        
+        function startAutoRefresh() {
+            refreshTimer = setInterval(function() {
+                ucitajAutobuse();
+                startCountdown();
+            }, REFRESH_INTERVAL);
+        }
  
+        // Početno učitavanje
         ucitajAutobuse();
+        startCountdown();
+        startAutoRefresh();
  
     </script>
 </body>
