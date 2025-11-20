@@ -91,7 +91,7 @@ export default function handler(req, res) {
     </div>
     
     <div class="refresh-timer">
-        Sledeće ažuriranje za: <strong id="timer">60</strong>s
+        Sledeće ažuriranje za: <strong id="timer">65</strong>s
     </div>
  
     <div id="map"></div>
@@ -109,8 +109,8 @@ export default function handler(req, res) {
         var sviPodaci = []; 
         
         const url = '/api/proxy';
-        const REFRESH_INTERVAL = 60000; // 60 sekundi
-        const COUNTDOWN_START = 60; // Početak odbrojavanja
+        const REFRESH_INTERVAL = 65000; // 65 sekundi
+        const COUNTDOWN_START = 65; // Početak odbrojavanja
         var refreshTimer;
         var countdown;
         var remainingSeconds = COUNTDOWN_START;
