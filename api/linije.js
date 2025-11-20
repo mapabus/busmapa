@@ -149,12 +149,11 @@ export default function handler(req, res) {
         
         async function loadStations() {
             try {
-                const response = await fetch('/api/all.json');
+                const response = await fetch('/all.json');  // PROMENJENA PUTANJA
                 if (!response.ok) throw new Error("Greška pri učitavanju stanica");
                 const stations = await response.json();
                 
-                console.log("Učitano stanica:", stations.length);
-                console.log("Primer prve 3 stanice:", stations.slice(0, 3));
+                console.log("✅ Učitano stanica:", stations.length);
                 
                 // Kreiramo mapu id -> name
                 stations.forEach(station => {
@@ -163,10 +162,9 @@ export default function handler(req, res) {
                     }
                 });
                 
-                console.log(\`Mapa stationNames ima \${Object.keys(stationNames).length} unosa\`);
-                console.log("Primer prvih 10 ključeva u mapi:", Object.keys(stationNames).slice(0, 10));
+                console.log(\`✅ Mapa stationNames ima \${Object.keys(stationNames).length} unosa\`);
             } catch (error) {
-                console.error("Greška pri učitavanju stanica:", error);
+                console.error("❌ Greška pri učitavanju stanica:", error);
             }
         }
 
@@ -256,7 +254,6 @@ export default function handler(req, res) {
                 
                 const label = e.vehicle.vehicle.label;
                 if (!isValidGarageNumber(label)) {
-                    console.log(\`Filtrirano vozilo sa garažnim: \${label}\`);
                     return false;
                 }
                 
@@ -274,29 +271,13 @@ export default function handler(req, res) {
  
                 const destId = tripDestinations[tripId] || "Unknown";
                 
-                console.log("destId iz API:", destId, "tip:", typeof destId);
-                
                 // Probamo različite načine mapiranja
                 let normalizedId = destId;
                 if (typeof destId === 'string' && destId.length === 5) {
                     normalizedId = destId.substring(1); // Ukloni prvu cifru
-                    console.log("Normalizovan ID (bez prve cifre):", normalizedId);
                 }
                 
-                let destName = stationNames[normalizedId];
-                console.log("Tražim u mapi ključ:", normalizedId, "-> rezultat:", destName);
-                
-                // Ako ne nađemo, pokušamo i sa originalnim destId
-                if (!destName) {
-                    destName = stationNames[destId];
-                    console.log("Pokušavam originalni destId:", destId, "-> rezultat:", destName);
-                }
-                
-                // Ako i dalje nema, prikaži ID
-                if (!destName) {
-                    destName = destId;
-                    console.log("Nije pronađeno ime, koristim ID:", destId);
-                }
+                let destName = stationNames[normalizedId] || stationNames[destId] || destId;
                 
                 const uniqueDirKey = \`\${route}_\${destId}\`;
  
