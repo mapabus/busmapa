@@ -267,21 +267,32 @@ export default function handler(req, res) {
             destinationLayer.clearLayers();
  
             let tripDestinations = {};
+            let debugCount = 0;
             
-            // NOVO: Detaljniji debug za vozilo 70618
+            // Analiziraj tripUpdate podatke
             entiteti.forEach(e => {
                 if (e.tripUpdate && e.tripUpdate.trip && e.tripUpdate.stopTimeUpdate) {
                     const updates = e.tripUpdate.stopTimeUpdate;
                     const vehicleId = e.tripUpdate.vehicle?.id || 'unknown';
+                    const routeId = e.tripUpdate.trip?.routeId || 'unknown';
                     
-                    // Debug za specifično vozilo
-                    if (vehicleId === '70618') {
-                        console.log('🚌 VOZILO 70618 DEBUG:');
-                        console.log('  Trip ID:', e.tripUpdate.trip.tripId);
-                        console.log('  Broj stanica:', updates.length);
-                        console.log('  Prva stanica:', updates[0]?.stopId);
-                        console.log('  Poslednja stanica:', updates[updates.length - 1]?.stopId);
-                        console.log('  Sve stanice:', updates.map(u => u.stopId));
+                    // Prikaži debug za prvo vozilo na liniji 601
+                    if (debugCount < 1 && routeId === '601') {
+                        console.log(\`🚌 DEBUG za vozilo \${vehicleId} na liniji \${routeId}:\`);
+                        console.log(\`   Ukupno stanica u ruti: \${updates.length}\`);
+                        
+                        if (updates.length > 0) {
+                            const firstStop = updates[0].stopId;
+                            const lastStop = updates[updates.length - 1].stopId;
+                            
+                            const firstNorm = normalizeStopId(firstStop);
+                            const lastNorm = normalizeStopId(lastStop);
+                            
+                            console.log(\`   Prva stanica: \${firstStop} -> \${stationsMap[firstNorm]?.name || 'Nepoznato'}\`);
+                            console.log(\`   Poslednja stanica: \${lastStop} -> \${stationsMap[lastNorm]?.name || 'Nepoznato'}\`);
+                            console.log(\`   Trip ID: \${e.tripUpdate.trip.tripId}\`);
+                        }
+                        debugCount++;
                     }
                     
                     if (updates.length > 0) {
