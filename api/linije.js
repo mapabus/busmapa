@@ -110,7 +110,7 @@ export default function handler(req, res) {
         let izabraneLinije = [];
         let timerId = null;
         let countdownId = null;
-        let refreshTime = 60; // 👈 PROMENJENA VREDNOST SA 15 NA 60 SEKUNDI
+        let refreshTime = 35; // 👈 PROMENJENA VREDNOST SA 15 NA 60 SEKUNDI
  
         let timeLeft = 0;
  
