@@ -269,7 +269,11 @@ export default function handler(req, res) {
                 const lon = v.vehicle.position.longitude;
  
                 const destId = tripDestinations[tripId] || "Unknown";
-                const destName = stationNames[destId] || destId; // Koristi ime stanice ako postoji, inače ID
+                
+                // Konvertuj stopId u format koji odgovara all.json (ukloni prvu cifru)
+                const normalizedId = destId.length === 5 ? destId.substring(1) : destId;
+                const destName = stationNames[normalizedId] || destId;
+                
                 const uniqueDirKey = \`\${route}_\${destId}\`;
  
                 if (!directionColorMap[uniqueDirKey]) {
