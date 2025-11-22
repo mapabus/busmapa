@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
 
   try {
-    // Dobij linije iz query parametara (npr. /api/vehicles?lines=31,32,33)
+
     const linesParam = req.query.lines;
     let selectedLines = null;
     
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
         const vehicleLabel = info.vehicle.label;
         const routeId = normalizeRouteId(info.trip.routeId);
 
-        // Filter invalid garage numbers (server-side filtering!)
+
         if (!isValidGarageNumber(vehicleLabel)) {
           return;
         }
@@ -96,7 +96,7 @@ export default async function handler(req, res) {
   }
 }
 
-// Server-side helper functions (HIDDEN from client!)
+
 function normalizeRouteId(routeId) {
   if (typeof routeId === 'string') {
     return parseInt(routeId, 10).toString();
