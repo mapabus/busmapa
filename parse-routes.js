@@ -81,6 +81,11 @@ const specialPatterns = {
   'мВ': 'MV',
 };
 
+/**
+ * Converts Cyrillic characters to their Latin equivalents
+ * @param {string} text - Text containing Cyrillic characters
+ * @returns {string} Text with Cyrillic characters converted to Latin
+ */
 function convertCyrillicToLatin(text) {
   // First check for special patterns
   let result = text;
@@ -94,6 +99,15 @@ function convertCyrillicToLatin(text) {
   }).join('');
 }
 
+/**
+ * Parses the lista.txt HTML file to extract route mappings
+ * @param {string} filePath - Path to the lista.txt file
+ * @returns {Object} Object mapping route IDs to display names
+ * 
+ * The file contains HTML with route entries in this format:
+ * - Line with URL: linija/{routeId}/prikaz
+ * - Following lines contain the display name (possibly in Cyrillic)
+ */
 function parseListaFile(filePath) {
   const content = fs.readFileSync(filePath, 'utf-8');
   const lines = content.split('\n');
@@ -117,7 +131,7 @@ function parseListaFile(filePath) {
       for (let j = 0; j < 5 && (i + j) < lines.length; j++) {
         const searchLine = lines[i + j];
         // Display name pattern: lots of whitespace, then the name, then more whitespace
-        const displayNameMatch = searchLine.match(/^\s+([^\s\[]+)\s*$/);
+        const displayNameMatch = searchLine.match(/^\s+([^\s[]+)\s*$/);
         if (displayNameMatch) {
           let displayName = displayNameMatch[1].trim();
           // Convert Cyrillic to Latin
