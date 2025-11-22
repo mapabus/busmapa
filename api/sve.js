@@ -201,7 +201,7 @@ export default function handler(req, res) {
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/app.min.js"></script>
     <script>
-        // Samo pozivamo init funkciju - sva logika je u app.min.js
+
         initApp();
     </script>
 </body>
