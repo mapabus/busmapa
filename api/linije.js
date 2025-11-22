@@ -143,8 +143,6 @@ export default function handler(req, res) {
         const busLayer = L.layerGroup().addTo(map);
         const destinationLayer = L.layerGroup().addTo(map);
  
-        const BASE_URL = 'https://rt.buslogic.baguette.pirnet.si/beograd/rt.json';
- 
         let izabraneLinije = [];
         let timerId = null;
         let countdownId = null;
@@ -217,26 +215,14 @@ export default function handler(req, res) {
             return null;
         }
 
-        // ================= UČITAVANJE STANICA =================
+        // ================= UČITAVANJE STANICA (SA SERVERA!) =================
         
         async function loadStations() {
             try {
-                const response = await fetch('/all.json');
+                const response = await fetch('/api/stations');
                 if (!response.ok) throw new Error("Greška pri učitavanju stanica");
-                const stations = await response.json();
-                
-                console.log("✅ Učitano stanica:", stations.length);
-                
-                stations.forEach(station => {
-                    if (station.id && station.name && station.coords) {
-                        stationsMap[station.id] = {
-                            name: station.name,
-                            coords: [parseFloat(station.coords[0]), parseFloat(station.coords[1])]
-                        };
-                    }
-                });
-                
-                console.log(\`✅ Mapa stanica ima \${Object.keys(stationsMap).length} unosa\`);
+                stationsMap = await response.json();
+                console.log(\`✅ Učitano stanica: \${Object.keys(stationsMap).length}\`);
             } catch (error) {
                 console.error("❌ Greška pri učitavanju stanica:", error);
             }
@@ -261,20 +247,8 @@ export default function handler(req, res) {
         }
 
         loadRouteNames();
-
-        // ================= FILTERI =================
-        
-        function isValidGarageNumber(label) {
-            if (!label || typeof label !== 'string') return false;
-            
-            if (label.startsWith('P')) {
-                return label.length >= 6;
-            }
-            
-            return true;
-        }
  
-        // ================= LOGIKA =================
+        // ================= LOGIKA (SA SERVERSKIM API-jem!) =================
  
         async function osveziPodatke() {
             if (izabraneLinije.length === 0) {
@@ -288,12 +262,8 @@ export default function handler(req, res) {
             document.getElementById('statusText').style.color = "#e67e22";
  
             try {
-                const timestamp = Date.now();
-                const randomSalt = Math.random().toString(36).substring(2, 15);
-                const targetUrl = \`\${BASE_URL}?_=\${timestamp}&salt=\${randomSalt}\`;
-                const proxyUrl = \`https://corsproxy.io/?\${encodeURIComponent(targetUrl)}\`;
- 
-                const response = await fetch(proxyUrl, { 
+                // NOVA LOGIKA: Pozivamo naš server endpoint umesto eksternog API-ja!
+                const response = await fetch('/api/vehicles', { 
                     method: 'GET',
                     cache: 'no-store',
                     headers: {
@@ -306,8 +276,14 @@ export default function handler(req, res) {
                 if (!response.ok) throw new Error("Greška mreže");
                 const data = await response.json();
  
-                if (data && data.entity) {
-                    crtajVozila(data.entity);
+                if (data && data.vehicles) {
+                    // Kreiraj vehicleDestinations mapu
+                    const vehicleDestinations = {};
+                    data.tripUpdates.forEach(update => {
+                        vehicleDestinations[update.vehicleId] = update.destination;
+                    });
+                    
+                    crtajVozila(data.vehicles, vehicleDestinations);
                     const timeStr = new Date().toLocaleTimeString();
                     document.getElementById('statusText').innerHTML = \`Ažurirano: <b>\${timeStr}</b>\`;
                     document.getElementById('statusText').style.color = "#27ae60";
@@ -321,37 +297,14 @@ export default function handler(req, res) {
             startTimer(refreshTime);
         }
  
-        function crtajVozila(entiteti) {
+        function crtajVozila(vehicles, vehicleDestinations) {
             busLayer.clearLayers();
             destinationLayer.clearLayers();
  
-            // NOVA LOGIKA: Mapa po vehicleId umesto po tripId
-            let vehicleDestinations = {};
-            
-            entiteti.forEach(e => {
-                if (e.tripUpdate && e.tripUpdate.trip && e.tripUpdate.stopTimeUpdate && e.tripUpdate.vehicle) {
-                    const updates = e.tripUpdate.stopTimeUpdate;
-                    const vehicleId = e.tripUpdate.vehicle.id;
-                    
-                    if (updates.length > 0 && vehicleId) {
-                        const lastStopId = updates[updates.length - 1].stopId;
-                        vehicleDestinations[vehicleId] = lastStopId;
-                    }
-                }
-            });
- 
-            const vozila = entiteti.filter(e => {
-                if (!e.vehicle || !e.vehicle.position) return false;
-                const routeId = normalizeRouteId(e.vehicle.trip.routeId);
-                
-                if (!izabraneLinije.includes(routeId)) return false;
-                
-                const label = e.vehicle.vehicle.label;
-                if (!isValidGarageNumber(label)) {
-                    return false;
-                }
-                
-                return true;
+            // Filtriraj vozila po izabranim linijama
+            const vozila = vehicles.filter(v => {
+                const routeId = normalizeRouteId(v.routeId);
+                return izabraneLinije.includes(routeId);
             });
 
             // Skupi sve jedinstvene destinacije
@@ -359,10 +312,9 @@ export default function handler(req, res) {
             let destinationInfo = {};
  
             vozila.forEach(v => {
-                const route = normalizeRouteId(v.vehicle.trip.routeId);
-                const vehicleId = v.vehicle.vehicle.id;
+                const route = normalizeRouteId(v.routeId);
+                const vehicleId = v.id;
                 
-                // KLJUČNA PROMENA: Koristi vehicleId umesto tripId
                 const destId = vehicleDestinations[vehicleId] || "Unknown";
                 
                 const normalizedId = normalizeStopId(destId);
@@ -415,13 +367,13 @@ export default function handler(req, res) {
  
             // Crtaj vozila sa strelicama ka destinaciji
             vozila.forEach(v => {
-                const id = v.vehicle.vehicle.id || v.id;
-                const label = v.vehicle.vehicle.label;
-                const route = normalizeRouteId(v.vehicle.trip.routeId);
-                const routeDisplayName = getRouteDisplayName(v.vehicle.trip.routeId);
-                const startTime = v.vehicle.trip.startTime || "N/A";
-                const lat = v.vehicle.position.latitude;
-                const lon = v.vehicle.position.longitude;
+                const id = v.id;
+                const label = v.label;
+                const route = normalizeRouteId(v.routeId);
+                const routeDisplayName = getRouteDisplayName(v.routeId);
+                const startTime = v.startTime || "N/A";
+                const lat = v.lat;
+                const lon = v.lon;
  
                 const destId = vehicleDestinations[id] || "Unknown";
                 const normalizedId = normalizeStopId(destId);
