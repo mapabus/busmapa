@@ -6,12 +6,12 @@ export default function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
 
   try {
-    // Read stations from file
+
     const filePath = path.join(process.cwd(), 'public', 'all.json');
     const fileContent = fs.readFileSync(filePath, 'utf-8');
     const stations = JSON.parse(fileContent);
 
-    // Process and normalize stations (server-side!)
+
     const stationsMap = {};
 
     stations.forEach(station => {
