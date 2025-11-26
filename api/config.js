@@ -4,7 +4,7 @@ export default function handler(req, res) {
 
 
   res.status(200).json({
-    refreshInterval: 65000,
+    refreshInterval: 60000,
     mapCenter: [44.8125, 20.4612],
     mapZoom: 13,
     colors: [
