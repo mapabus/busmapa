@@ -1,15 +1,7 @@
 export default function handler(req, res) {
-  const html = `
-<!DOCTYPE html>
-<html lang="sr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Linije</title>
- 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
- 
-    <style>
+
+    // 1. CSS STILOVI (Izdvojeni radi preglednosti i sigurnosti)
+    const styles = `
         body { margin: 0; padding: 0; font-family: sans-serif; overflow: hidden; background: #eee; }
         #map { height: 100vh; width: 100%; z-index: 1; }
  
@@ -102,32 +94,10 @@ export default function handler(req, res) {
             font-weight: bold;
             font-size: 16px;
         }
- 
-    </style>
-</head>
-<body>
- 
-    <div class="controls">
-        <h3>Sva Vozila Prijavljena na Polazak</h3>
- 
-        <div class="input-group">
-            <input type="text" id="lineInput" placeholder="Linija (npr. 31, 860MV, 3A)" onkeypress="handleEnter(event)">
-            <button id="addBtn" onclick="dodajLiniju()">+</button>
-        </div>
- 
-        <ul id="activeLines"></ul>
- 
-        <div class="status-bar">
-            Osvežavanje za: <b><span id="countdown">--</span>s</b><br>
-            <span id="statusText">Unesi liniju...</span>
-        </div>
-    </div>
- 
-    <div id="map"></div>
- 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
+    `;
 
+    // 2. KLIJENTSKA SKRIPTA (Kao raw string, izbegavamo backticks unutar backticka)
+    const clientScript = `
         const map = L.map('map', { zoomControl: false }).setView([44.8125, 20.4612], 13);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; CARTO'
@@ -541,12 +511,11 @@ export default function handler(req, res) {
                         fillOpacity: 1
                     });
                     
-                    const popupContent = `
-                        <div class="popup-content">
-                            <div class="popup-row"><b>${stop.name}</b></div>
-                            <div class="popup-row">Smer: <span style="color:${color}; font-weight:bold;">${direction === '0' ? 'A' : 'B'}</span></div>
-                        </div>
-                    `;
+                    const popupContent = 
+                        '<div class="popup-content">' +
+                            '<div class="popup-row"><b>' + stop.name + '</b></div>' +
+                            '<div class="popup-row">Smer: <span style="color:' + color + '; font-weight:bold;">' + (direction === '0' ? 'A' : 'B') + '</span></div>' +
+                        '</div>';
                     
                     stopMarker.bindPopup(popupContent);
                     stopMarker.addTo(stopsLayer);
@@ -587,7 +556,7 @@ export default function handler(req, res) {
                     
                     crtajVozila(data.vehicles, vehicleDestinations);
                     const timeStr = new Date().toLocaleTimeString();
-                    document.getElementById('statusText').innerHTML = `Ažurirano: <b>${timeStr}</b>`;
+                    document.getElementById('statusText').innerHTML = 'Ažurirano: <b>' + timeStr + '</b>';
                     document.getElementById('statusText').style.color = "#27ae60";
                 }
             } catch (error) {
@@ -641,11 +610,10 @@ export default function handler(req, res) {
                 let station = stopsGradskeData[info.normalizedId] || stopsData[info.normalizedId];
                 
                 if (station) {
-                    const destHtml = `
-                        <div class="destination-marker" style="background: ${info.color};">
-                            <div class="destination-marker-inner">📍</div>
-                        </div>
-                    `;
+                    const destHtml = 
+                        '<div class="destination-marker" style="background: ' + info.color + ';">' +
+                            '<div class="destination-marker-inner">📍</div>' +
+                        '</div>';
                     
                     const destIcon = L.divIcon({
                         className: 'destination-icon-container',
@@ -654,12 +622,11 @@ export default function handler(req, res) {
                         iconAnchor: [12, 24]
                     });
                     
-                    const destPopup = `
-                        <div class="popup-content">
-                            <div class="popup-row"><span class="popup-label">Stanica:</span> <b>${station.name}</b></div>
-                            <div class="popup-row"><span class="popup-label">ID:</span> ${destId}</div>
-                        </div>
-                    `;
+                    const destPopup = 
+                        '<div class="popup-content">' +
+                            '<div class="popup-row"><span class="popup-label">Stanica:</span> <b>' + station.name + '</b></div>' +
+                            '<div class="popup-row"><span class="popup-label">ID:</span> ' + destId + '</div>' +
+                        '</div>';
                     
                     L.marker([station.lat, station.lon], {icon: destIcon})
                         .bindPopup(destPopup)
@@ -697,17 +664,16 @@ export default function handler(req, res) {
  
                 const arrowDisplay = hasAngle ? 'block' : 'none';
  
-                const iconHtml = `
-                    <div class="bus-wrapper">
-                        <div class="bus-arrow" style="transform: rotate(${rotation}deg); display: ${arrowDisplay};">
-                            <div class="arrow-head" style="border-bottom-color: ${color}; filter: brightness(0.6);"></div>
-                        </div>
-                        <div class="bus-circle" style="background: ${color};">
-                            ${routeDisplayName}
-                        </div>
-                        <div class="bus-garage-label">${label}</div>
-                    </div>
-                `;
+                const iconHtml = 
+                    '<div class="bus-wrapper">' +
+                        '<div class="bus-arrow" style="transform: rotate(' + rotation + 'deg); display: ' + arrowDisplay + ';">' +
+                            '<div class="arrow-head" style="border-bottom-color: ' + color + '; filter: brightness(0.6);"></div>' +
+                        '</div>' +
+                        '<div class="bus-circle" style="background: ' + color + ';">' +
+                             routeDisplayName +
+                        '</div>' +
+                        '<div class="bus-garage-label">' + label + '</div>' +
+                    '</div>';
  
                 const icon = L.divIcon({
                     className: 'bus-icon-container',
@@ -718,21 +684,20 @@ export default function handler(req, res) {
 
                 let speedText = '';
                 if (speed !== null && speed !== undefined && speed > 0) {
-                    speedText = `<div class="popup-row"><span class="popup-label">Prosečna brzina:</span> <b style="color: #2980b9;">${speed} km/h</b></div>`;
+                    speedText = '<div class="popup-row"><span class="popup-label">Prosečna brzina:</span> <b style="color: #2980b9;">' + speed + ' km/h</b></div>';
                 } else {
-                    speedText = `<div class="popup-row"><span class="popup-label">Brzina:</span> <span style="color: #95a5a6;">Računanje...</span></div>`;
+                    speedText = '<div class="popup-row"><span class="popup-label">Brzina:</span> <span style="color: #95a5a6;">Računanje...</span></div>';
                 }
  
-                const popupContent = `
-                    <div class="popup-content">
-                        <div class="popup-row"><span class="popup-label">Linija:</span> <b>${routeDisplayName}</b></div>
-                        <div class="popup-row"><span class="popup-label">Garažni:</span> ${label}</div>
-                        <hr style="margin: 5px 0; border-color:#eee;">
-                        <div class="popup-row"><span class="popup-label">Polazak:</span> <b>${startTime}</b></div>
-                        <div class="popup-row"><span class="popup-label">Smer (ide ka):</span> <span style="color:${color}; font-weight:bold;">${destName}</span></div>
-                        ${speedText}
-                    </div>
-                `;
+                const popupContent = 
+                    '<div class="popup-content">' +
+                        '<div class="popup-row"><span class="popup-label">Linija:</span> <b>' + routeDisplayName + '</b></div>' +
+                        '<div class="popup-row"><span class="popup-label">Garažni:</span> ' + label + '</div>' +
+                        '<hr style="margin: 5px 0; border-color:#eee;">' +
+                        '<div class="popup-row"><span class="popup-label">Polazak:</span> <b>' + startTime + '</b></div>' +
+                        '<div class="popup-row"><span class="popup-label">Smer (ide ka):</span> <span style="color:' + color + '; font-weight:bold;">' + destName + '</span></div>' +
+                         speedText +
+                    '</div>';
  
                 L.marker([lat, lon], {icon: icon})
                     .bindPopup(popupContent)
@@ -760,7 +725,7 @@ export default function handler(req, res) {
             
             const routeId = findRouteId(val);
             if (!routeId) {
-                alert(\`Linija "\${val}" nije pronađena! Pokušaj sa drugim nazivom.\`);
+                alert('Linija "' + val + '" nije pronađena! Pokušaj sa drugim nazivom.');
                 input.value = '';
                 return;
             }
@@ -800,11 +765,11 @@ export default function handler(req, res) {
             ul.innerHTML = '';
             izabraneLinije.forEach((l) => {
                 const displayName = getRouteDisplayName(l);
-                ul.innerHTML += `
-                    <li class="line-item">
-                        <span>Linija ${displayName}</span>
-                        <span class="remove-btn" onclick="ukloniLiniju('${l}')">&times;</span>
-                    </li>`;
+                const li = document.createElement('li');
+                li.className = 'line-item';
+                li.innerHTML = '<span>Linija ' + displayName + '</span>' +
+                               '<span class="remove-btn" onclick="ukloniLiniju(\\'' + l + '\\')">&times;</span>';
+                ul.appendChild(li);
             });
         }
  
@@ -834,12 +799,39 @@ export default function handler(req, res) {
         }
 
         init();
- 
-    </script>
+    `;
+
+    // 3. SPAJANJE SVEGA U JEDAN HTML ODGOVOR
+    const html = `
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Linije</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>${styles}</style>
+</head>
+<body>
+    <div class="controls">
+        <h3>Sva Vozila Prijavljena na Polazak</h3>
+        <div class="input-group">
+            <input type="text" id="lineInput" placeholder="Linija (npr. 31, 860MV, 3A)" onkeypress="handleEnter(event)">
+            <button id="addBtn" onclick="dodajLiniju()">+</button>
+        </div>
+        <ul id="activeLines"></ul>
+        <div class="status-bar">
+            Osvežavanje za: <b><span id="countdown">--</span>s</b><br>
+            <span id="statusText">Unesi liniju...</span>
+        </div>
+    </div>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>${clientScript}</script>
 </body>
 </html>
-  `;
+    `;
 
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.status(200).send(html);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.status(200).send(html);
 }
