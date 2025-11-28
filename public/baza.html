@@ -244,9 +244,9 @@
     <div class="container">
         <div class="header">
             <div>
-                <h1>📊 Baza Vozila</h1>
+                <h1>Baza Vozila</h1>
                 <div class="last-update" id="lastUpdate">
-                    ⏱️ Učitavam podatke...
+                    Učitavam podatke...
                 </div>
             </div>
             <div class="stats">
@@ -259,31 +259,29 @@
                     <span class="stat-label">Linija</span>
                 </div>
             </div>
-            <button class="refresh-btn" onclick="loadData()">
-                🔄 Osveži
-            </button>
+
         </div>
 
         <div class="controls">
             <div class="search-group">
-                <label for="searchVehicle">🚌 Pretraži vozilo:</label>
-                <input type="text" id="searchVehicle" placeholder="Npr. 2503" oninput="filterTable()">
+                <label for="searchVehicle">Pretraži vozilo:</label>
+                <input type="text" id="searchVehicle" placeholder="Npr. P70618" oninput="filterTable()">
             </div>
             <div class="search-group">
-                <label for="searchRoute">🛣️ Pretraži liniju:</label>
-                <input type="text" id="searchRoute" placeholder="Npr. 31" oninput="filterTable()">
+                <label for="searchRoute">Pretraži liniju:</label>
+                <input type="text" id="searchRoute" placeholder="Npr. 601" oninput="filterTable()">
             </div>
             <div class="search-group">
-                <label for="searchDeparture">⏰ Pretraži polazak:</label>
-                <input type="text" id="searchDeparture" placeholder="Npr. 12:30" oninput="filterTable()">
+                <label for="searchDeparture">Pretraži polazak:</label>
+                <input type="text" id="searchDeparture" placeholder="Npr. 12:31" oninput="filterTable()">
             </div>
             <div class="search-group">
-                <label for="searchDirection">📍 Pretraži smer:</label>
-                <input type="text" id="searchDirection" placeholder="Npr. Vukov Spomenik" oninput="filterTable()">
+                <label for="searchDirection">Pretraži smer:</label>
+                <input type="text" id="searchDirection" placeholder="Npr. Surčin" oninput="filterTable()">
             </div>
             <div class="search-group">
-                <label for="searchDate">📅 Pretraži datum:</label>
-                <input type="text" id="searchDate" placeholder="Npr. 28. 11. 2025." oninput="filterTable()">
+                <label for="searchDate">Pretraži datum:</label>
+                <input type="text" id="searchDate" placeholder="Npr. 28.11.2025." oninput="filterTable()">
             </div>
         </div>
 
@@ -337,7 +335,7 @@
                         minute: '2-digit',
                         second: '2-digit'
                     });
-                    lastUpdate.innerHTML = `⏱️ Poslednje osvežavanje: <strong>${time}</strong>`;
+                    lastUpdate.innerHTML = ``;
                 } else {
                     tbody.innerHTML = '<tr><td colspan="5" class="no-data">Nema podataka</td></tr>';
                 }
@@ -355,7 +353,14 @@
                 return;
             }
 
-            tbody.innerHTML = data.map(vehicle => `
+            // Sortiranje pre prikaza
+            const sortedData = [...data].sort((a, b) => {
+                const numA = parseInt(a.vozilo) || 0;
+                const numB = parseInt(b.vozilo) || 0;
+                return numA - numB;
+            });
+
+            tbody.innerHTML = sortedData.map(vehicle => `
                 <tr>
                     <td><strong>${vehicle.vozilo}</strong></td>
                     <td>${vehicle.linija}</td>
@@ -397,8 +402,7 @@
         // Učitaj podatke pri startovanju
         loadData();
 
-        // Auto-refresh svakih 60 sekundi
-        setInterval(loadData, 60000);
+
     </script>
 </body>
 </html>
