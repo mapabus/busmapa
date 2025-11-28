@@ -81,7 +81,6 @@ export default function handler(req, res) {
             position: absolute; top: 0px; left: 50%; transform: translateX(-50%);
         }
  
-        /* POPUP STIL */
         .popup-content { font-size: 13px; line-height: 1.4; }
         .popup-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
         .popup-label { font-weight: bold; color: #555; }
@@ -162,6 +161,7 @@ export default function handler(req, res) {
 
         let shapesData = {};
         let vehicleShapeMap = {};
+        let shapeToColorMapGlobal = {};
  
 
         const colors = [
@@ -313,7 +313,7 @@ export default function handler(req, res) {
             return routeId;
         }
 
-        function drawAllRoutes(shapeToColorMap = {}) {
+        function drawAllRoutes() {
             routeLayer.clearLayers();
             
             if (izabraneLinije.length === 0) return;
@@ -323,7 +323,6 @@ export default function handler(req, res) {
             izabraneLinije.forEach(routeId => {
                 const paddedRouteId = padRouteId(routeId);
                 
-                // Pronađi sve shape-ove za ovaj route
                 let matchingShapes = [];
                 for (let shapeKey in shapesData) {
                     if (shapeKey.startsWith(routeId + '_') || shapeKey.startsWith(paddedRouteId + '_')) {
@@ -333,16 +332,13 @@ export default function handler(req, res) {
                 
                 console.log(\`Route \${routeId}: found \${matchingShapes.length} shapes\`);
                 
-                // Nacrtaj svaki shape sa odgovarajućom bojom
                 matchingShapes.forEach(shapeKey => {
                     const shapePoints = shapesData[shapeKey];
                     
                     if (!shapePoints || shapePoints.length === 0) return;
                     
-                    // Pronađi boju za ovaj shape
-                    let shapeColor = shapeToColorMap[shapeKey];
+                    let shapeColor = shapeToColorMapGlobal[shapeKey];
                     
-                    // Ako nema u prosleđenoj mapi, koristi prvu dostupnu boju za ovaj route
                     if (!shapeColor) {
                         for (let dirKey in directionColorMap) {
                             if (dirKey.startsWith(routeId + '_')) {
@@ -352,7 +348,6 @@ export default function handler(req, res) {
                         }
                     }
                     
-                    // Fallback boja
                     if (!shapeColor) shapeColor = '#95a5a6';
                     
                     const latLngs = shapePoints.map(point => [point.lat, point.lon]);
@@ -421,13 +416,10 @@ export default function handler(req, res) {
                         }
                     });
                     
-                    // PRVO: Popuni directionColorMap i kreiraj shapeToColorMap
                     const vozila = data.vehicles.filter(v => {
                         const routeId = normalizeRouteId(v.routeId);
                         return izabraneLinije.includes(routeId);
                     });
-
-                    const shapeToColorMap = {};
                     
                     vozila.forEach(v => {
                         const route = normalizeRouteId(v.routeId);
@@ -440,22 +432,17 @@ export default function handler(req, res) {
                             directionColorMap[uniqueDirKey] = colors[nextColorIndex];
                         }
                         
-                        // Mapiraj shape ID na boju
                         const shapeId = vehicleShapeMap[vehicleId];
-                        if (shapeId) {
-                            // Ako već postoji boja za ovaj shape, ne prepisuj je
-                            if (!shapeToColorMap[shapeId]) {
-                                shapeToColorMap[shapeId] = directionColorMap[uniqueDirKey];
-                                console.log(\`Mapiranje: \${shapeId} -> \${directionColorMap[uniqueDirKey]} (dest: \${destId})\`);
-                            }
+                        if (shapeId && !shapeToColorMapGlobal[shapeId]) {
+                            shapeToColorMapGlobal[shapeId] = directionColorMap[uniqueDirKey];
+                            console.log(\`Mapiranje: \${shapeId} -> \${directionColorMap[uniqueDirKey]} (dest: \${destId})\`);
                         }
                     });
                     
-                    console.log('Shape to Color Map:', shapeToColorMap);
+                    console.log('Shape to Color Map:', shapeToColorMapGlobal);
                     console.log('Direction Color Map:', directionColorMap);
                     
-                    // ZATIM: Crtaj rute sa popunjenim bojama
-                    drawAllRoutes(shapeToColorMap);
+                    drawAllRoutes();
                     crtajVozila(data.vehicles, vehicleDestinations);
                     
                     const timeStr = new Date().toLocaleTimeString();
@@ -494,7 +481,6 @@ export default function handler(req, res) {
                 const normalizedId = normalizeStopId(destId);
                 const uniqueDirKey = \`\${route}_\${destId}\`;
                 
-                // Boja je već dodeljena u osveziPodatke(), samo je preuzimamo
                 const color = directionColorMap[uniqueDirKey];
                 
                 destinations.add(destId);
