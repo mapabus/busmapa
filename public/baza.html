@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 1600px;
+            max-width: 98%;
             margin: 0 auto;
         }
 
@@ -117,7 +117,6 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            table-layout: fixed;
         }
 
         thead {
@@ -134,10 +133,10 @@
             letter-spacing: 0.5px;
         }
 
-        th:nth-child(1) { width: 10%; min-width: 100px; } /* VOZILO */
-        th:nth-child(2) { width: 10%; min-width: 100px; } /* LINIJA */
-        th:nth-child(3) { width: 12%; min-width: 120px; } /* POLAZAK */
-        th:nth-child(4) { width: 68%; min-width: 300px; } /* SMER */
+        th:nth-child(1) { width: 8%; } /* VOZILO */
+        th:nth-child(2) { width: 8%; } /* LINIJA */
+        th:nth-child(3) { width: 12%; } /* POLAZAK */
+        th:nth-child(4) { width: 72%; } /* SMER */
 
         td {
             padding: 16px 20px;
@@ -224,7 +223,6 @@
 
             table {
                 font-size: 13px;
-                table-layout: auto;
             }
 
             th, td {
@@ -254,7 +252,7 @@
                 </div>
                 <div class="stat-box">
                     <span class="stat-number" id="totalRoutes">-</span>
-                    <span class="stat-label">Linija</span>
+                    <span class="stat-label">Aktivne linije</span>
                 </div>
             </div>
             <button class="refresh-btn" onclick="loadData()">
