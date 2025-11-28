@@ -337,18 +337,9 @@ export default function handler(req, res) {
                     
                     if (!shapePoints || shapePoints.length === 0) return;
                     
-                    let shapeColor = shapeToColorMapGlobal[shapeKey];
+                    let shapeColor = shapeToColorMapGlobal[shapeKey] || '#95a5a6';
                     
-                    if (!shapeColor) {
-                        for (let dirKey in directionColorMap) {
-                            if (dirKey.startsWith(routeId + '_')) {
-                                shapeColor = directionColorMap[dirKey];
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (!shapeColor) shapeColor = '#95a5a6';
+                    console.log(\`Drawing shape \${shapeKey} with color \${shapeColor}\`);
                     
                     const latLngs = shapePoints.map(point => [point.lat, point.lon]);
                     
@@ -382,6 +373,8 @@ export default function handler(req, res) {
                 busLayer.clearLayers();
                 destinationLayer.clearLayers();
                 routeLayer.clearLayers();
+                directionColorMap = {};
+                shapeToColorMapGlobal = {};
                 startTimer(0); 
                 return;
             }
@@ -433,9 +426,11 @@ export default function handler(req, res) {
                         }
                         
                         const shapeId = vehicleShapeMap[vehicleId];
-                        if (shapeId && !shapeToColorMapGlobal[shapeId]) {
-                            shapeToColorMapGlobal[shapeId] = directionColorMap[uniqueDirKey];
-                            console.log(\`Mapiranje: \${shapeId} -> \${directionColorMap[uniqueDirKey]} (dest: \${destId})\`);
+                        if (shapeId) {
+                            if (!shapeToColorMapGlobal[shapeId]) {
+                                shapeToColorMapGlobal[shapeId] = directionColorMap[uniqueDirKey];
+                                console.log(\`✓ Mapiranje: \${shapeId} -> \${directionColorMap[uniqueDirKey]} (dest: \${destId})\`);
+                            }
                         }
                     });
                     
@@ -630,6 +625,21 @@ export default function handler(req, res) {
  
         function ukloniLiniju(linija) {
             izabraneLinije = izabraneLinije.filter(l => l !== linija);
+            
+            const keysToRemove = [];
+            for (let key in directionColorMap) {
+                if (key.startsWith(linija + '_')) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach(key => delete directionColorMap[key]);
+            
+            for (let shapeKey in shapeToColorMapGlobal) {
+                if (shapeKey.startsWith(linija + '_') || shapeKey.startsWith(padRouteId(linija) + '_')) {
+                    delete shapeToColorMapGlobal[shapeKey];
+                }
+            }
+            
             azurirajListu();
             osveziPodatke();
         }
