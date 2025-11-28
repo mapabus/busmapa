@@ -330,8 +330,6 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return R * c; // Vraća udaljenost u metrima
 }
 
-// Zameni celu drawAllRoutes funkciju sa ovom:
-
 function drawAllRoutes() {
     routeLayer.clearLayers();
     
