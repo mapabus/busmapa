@@ -401,11 +401,13 @@ export default function handler(req, res) {
 
                     const vehicleDestinations = {};
                     vehicleShapeMap = {};
+                    const shapeToDestMap = {};
                     
                     data.tripUpdates.forEach(update => {
                         vehicleDestinations[update.vehicleId] = update.destination;
                         if (update.shapeId) {
                             vehicleShapeMap[update.vehicleId] = update.shapeId;
+                            shapeToDestMap[update.shapeId] = update.destination;
                         }
                     });
                     
@@ -433,6 +435,22 @@ export default function handler(req, res) {
                             }
                         }
                     });
+                    
+                    for (let shapeKey in shapesData) {
+                        if (shapeToColorMapGlobal[shapeKey]) continue;
+                        
+                        const destId = shapeToDestMap[shapeKey];
+                        if (destId) {
+                            for (let route of izabraneLinije) {
+                                const uniqueDirKey = \`\${route}_\${destId}\`;
+                                if (directionColorMap[uniqueDirKey]) {
+                                    shapeToColorMapGlobal[shapeKey] = directionColorMap[uniqueDirKey];
+                                    console.log(\`✓ Dodatno mapiranje: \${shapeKey} -> \${directionColorMap[uniqueDirKey]} (dest: \${destId})\`);
+                                    break;
+                                }
+                            }
+                        }
+                    }
                     
                     console.log('Shape to Color Map:', shapeToColorMapGlobal);
                     console.log('Direction Color Map:', directionColorMap);
@@ -652,35 +670,4 @@ export default function handler(req, res) {
                 ul.innerHTML += \`
                     <li class="line-item">
                         <span>Linija \${displayName}</span>
-                        <span class="remove-btn" onclick="ukloniLiniju('\${l}')">&times;</span>
-                    </li>\`;
-            });
-        }
- 
-        function startTimer(seconds) {
-            if (timerId) clearTimeout(timerId);
-            if (countdownId) clearInterval(countdownId);
-            if (seconds === 0) return;
- 
-            timeLeft = seconds;
-            document.getElementById('countdown').innerText = timeLeft;
- 
-            countdownId = setInterval(() => {
-                timeLeft--;
-                if (timeLeft < 0) timeLeft = 0;
-                document.getElementById('countdown').innerText = timeLeft;
-            }, 1000);
- 
-            timerId = setTimeout(osveziPodatke, seconds * 1000);
-        }
- 
-        function handleEnter(e) { if (e.key === 'Enter') dodajLiniju(); }
- 
-    </script>
-</body>
-</html>
-  `;
-
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.status(200).send(html);
-}
+                        <span class="remove-btn" onclick="ukloniLiniju('\${l}')"
