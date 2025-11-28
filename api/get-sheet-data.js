@@ -6,7 +6,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Google Sheets autentifikacija
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
@@ -18,10 +17,10 @@ export default async function handler(req, res) {
     const sheets = google.sheets({ version: 'v4', auth });
     const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
 
-    // Učitaj podatke iz sheet-a
+    // PROMENA: Koristi Sheet1 umesto BazaVozila
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'BazaVozila!A2:E', // Preskoči header red
+      range: 'Sheet1!A2:E', // Preskoči header red
     });
 
     const rows = response.data.values;
@@ -34,7 +33,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Formatiraj podatke
     const vehicles = rows.map(row => ({
       vozilo: row[0] || '',
       linija: row[1] || '',
