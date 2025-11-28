@@ -15,12 +15,13 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 10px;
         }
 
         .container {
-            max-width: 98%;
-            margin: 0 auto;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
         }
 
         .header {
@@ -133,10 +134,10 @@
             letter-spacing: 0.5px;
         }
 
-        th:nth-child(1) { width: 8%; } /* VOZILO */
-        th:nth-child(2) { width: 8%; } /* LINIJA */
-        th:nth-child(3) { width: 12%; } /* POLAZAK */
-        th:nth-child(4) { width: 72%; } /* SMER */
+        th:nth-child(1) { white-space: nowrap; } /* VOZILO */
+        th:nth-child(2) { white-space: nowrap; } /* LINIJA */
+        th:nth-child(3) { white-space: nowrap; } /* POLAZAK */
+        th:nth-child(4) { width: 100%; } /* SMER */
 
         td {
             padding: 16px 20px;
