@@ -35,7 +35,7 @@ export default function handler(req, res) {
             display: flex; justify-content: space-between; align-items: center; 
             font-weight: 600; font-size: 14px;
         }
-        .remove-btn { color: #e74c3c; font-size: 20px; line-height: 1; padding-left: 10px; }
+        .remove-btn { color: #e74c3c; font-size: 20px; line-height: 1; padding-left: 10px; cursor: pointer; }
  
         .status-bar { margin-top: 10px; font-size: 11px; color: #666; border-top: 1px solid #eee; padding-top: 8px; }
  
@@ -670,4 +670,48 @@ export default function handler(req, res) {
                 ul.innerHTML += \`
                     <li class="line-item">
                         <span>Linija \${displayName}</span>
-                        <span class="remove-btn" onclick="ukloniLiniju('\${l}')"
+                        <span class="remove-btn" onclick="ukloniLiniju('\${l}')">✖</span>
+                    </li>
+                \`;
+            });
+        }
+
+        function handleEnter(event) {
+            if (event.key === 'Enter') {
+                dodajLiniju();
+            }
+        }
+
+        function startTimer(seconds) {
+            if (timerId) clearTimeout(timerId);
+            if (countdownId) clearInterval(countdownId);
+            
+            if (seconds === 0) {
+                document.getElementById('countdown').innerText = '--';
+                return;
+            }
+            
+            timeLeft = seconds;
+            document.getElementById('countdown').innerText = timeLeft;
+            
+            countdownId = setInterval(() => {
+                timeLeft--;
+                document.getElementById('countdown').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(countdownId);
+                }
+            }, 1000);
+            
+            timerId = setTimeout(() => {
+                osveziPodatke();
+            }, seconds * 1000);
+        }
+ 
+    </script>
+</body>
+</html>
+  `;
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.status(200).send(html);
+}
