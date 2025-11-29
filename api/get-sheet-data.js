@@ -44,8 +44,7 @@ export default async function handler(req, res) {
       polazak: row[2] || '',
       smer: row[3] || '',
       timestamp: row[4] || '',
-      datum: row[5] || '',
-      rowIndex: index + 2
+      datum: row[5] || ''
     }));
 
     res.status(200).json({ 
