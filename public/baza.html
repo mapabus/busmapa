@@ -70,6 +70,47 @@
             opacity: 0.9;
         }
 
+        .date-selector {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .date-selector label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .date-selector input[type="date"] {
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .date-selector button {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .date-selector button:hover {
+            transform: translateY(-2px);
+        }
+
         .controls {
             background: white;
             padding: 20px;
@@ -134,11 +175,11 @@
             letter-spacing: 0.5px;
         }
 
-        th:nth-child(1) { width: 10%; } /* VOZILO */
-        th:nth-child(2) { width: 10%; } /* LINIJA */
-        th:nth-child(3) { width: 12%; } /* POLAZAK */
-        th:nth-child(4) { width: 48%; } /* SMER */
-        th:nth-child(5) { width: 20%; } /* DATUM */
+        th:nth-child(1) { width: 10%; }
+        th:nth-child(2) { width: 10%; }
+        th:nth-child(3) { width: 12%; }
+        th:nth-child(4) { width: 48%; }
+        th:nth-child(5) { width: 20%; }
 
         td {
             padding: 16px 20px;
@@ -181,38 +222,6 @@
             60%, 100% { content: '...'; }
         }
 
-        .refresh-btn {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .refresh-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(30, 60, 114, 0.4);
-        }
-
-        .refresh-btn:active {
-            transform: translateY(0);
-        }
-
-        .last-update {
-            color: #666;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
         @media (max-width: 768px) {
             .header {
                 flex-direction: column;
@@ -231,12 +240,6 @@
             th, td {
                 padding: 12px 10px;
             }
-
-            th:nth-child(1) { width: auto; }
-            th:nth-child(2) { width: auto; }
-            th:nth-child(3) { width: auto; }
-            th:nth-child(4) { width: auto; }
-            th:nth-child(5) { width: auto; }
         }
     </style>
 </head>
@@ -245,9 +248,6 @@
         <div class="header">
             <div>
                 <h1>Baza Vozila</h1>
-                <div class="last-update" id="lastUpdate">
-                    Učitavam podatke...
-                </div>
             </div>
             <div class="stats">
                 <div class="stat-box">
@@ -259,6 +259,14 @@
                     <span class="stat-label">Linija</span>
                 </div>
             </div>
+        </div>
+
+        <div class="date-selector">
+            <label for="dateInput">Izaberi datum:</label>
+            <input type="date" id="dateInput">
+            <button onclick="loadDataForSelectedDate()">Učitaj</button>
+            <button onclick="loadToday()">Danas</button>
+            <span id="currentSheet" style="margin-left: 20px; color: #666; font-size: 14px;"></span>
         </div>
 
         <div class="controls">
@@ -279,10 +287,6 @@
                 <input type="text" id="searchDirection" placeholder="Npr. Surčin" oninput="filterTable()">
             </div>
             <div class="search-group">
-                <label for="searchDate">Pretraži datum:</label>
-                <input type="text" id="searchDate" placeholder="Npr. 28.11.2025." oninput="filterTable()">
-            </div>
-            <div class="search-group">
                 <label for="sortBy">Sortiraj po:</label>
                 <select id="sortBy" onchange="filterTable()" style="padding: 10px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; cursor: pointer; background: white;">
                     <option value="vehicle">Broj vozila</option>
@@ -299,7 +303,7 @@
                         <th>Linija</th>
                         <th>Polazak</th>
                         <th>Smer (ide ka)</th>
-                        <th>Datum</th>
+                        <th>Vreme upisa</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
@@ -314,17 +318,22 @@
     <script>
         let allData = [];
 
-        // Funkcija za parsiranje datuma u format dd.mm.yyyy.
-        function parseDate(dateStr) {
-            // Očekivani format: "28.11.2025."
-            const parts = dateStr.replace('.', '').split('.');
-            if (parts.length >= 3) {
-                const day = parseInt(parts[0]);
-                const month = parseInt(parts[1]) - 1; // Meseci su 0-11
-                const year = parseInt(parts[2]);
-                return new Date(year, month, day);
-            }
-            return new Date(0); // Ako format nije ispravan, vrati najstariji datum
+        // Postavi današnji datum po default-u
+        function setTodayDate() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('dateInput').value = `${yyyy}-${mm}-${dd}`;
+        }
+
+        function loadToday() {
+            setTodayDate();
+            loadData();
+        }
+
+        function loadDataForSelectedDate() {
+            loadData();
         }
 
         async function loadData() {
@@ -343,23 +352,18 @@
                         const existing = vehicleMap.get(vehicle.vozilo);
                         
                         if (!existing) {
-                            // Prvo pojavljivanje ovog vozila
                             vehicleMap.set(vehicle.vozilo, vehicle);
                         } else {
-                            // Uporedi datume i zadrži noviji
-                            const existingDate = parseDate(existing.datum);
-                            const currentDate = parseDate(vehicle.datum);
-                            
-                            if (currentDate > existingDate) {
+                            // Uporedi timestamp i zadrži noviji
+                            if (vehicle.timestamp > existing.timestamp) {
                                 vehicleMap.set(vehicle.vozilo, vehicle);
                             }
                         }
                     });
                     
-                    // Konvertuj Map nazad u array
                     allData = Array.from(vehicleMap.values());
                     
-                    // Sortiraj po broju vozila (numerički)
+                    // Sortiraj po broju vozila
                     allData.sort((a, b) => {
                         const numA = parseInt(a.vozilo.replace(/\D/g, '')) || 0;
                         const numB = parseInt(b.vozilo.replace(/\D/g, '')) || 0;
@@ -369,19 +373,15 @@
                     renderTable(allData);
                     updateStats(allData);
                     
-                    const lastUpdate = document.getElementById('lastUpdate');
-                    const time = new Date().toLocaleString('sr-RS', { 
-                        hour: '2-digit', 
-                        minute: '2-digit',
-                        second: '2-digit'
-                    });
-                    lastUpdate.innerHTML = ``;
+                    document.getElementById('currentSheet').textContent = 
+                        `📊 Prikazujem: ${data.sheetName || 'Sheet1'} (${allData.length} vozila)`;
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="5" class="no-data">Nema podataka</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="5" class="no-data">${data.message || 'Nema podataka'}</td></tr>`;
+                    document.getElementById('currentSheet').textContent = '';
                 }
             } catch (error) {
                 console.error('Greška:', error);
-                tbody.innerHTML = '<tr><td colspan="5" class="no-data">❌ Greška pri učitavanju podataka</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="no-data">Greška pri učitavanju podataka</td></tr>';
             }
         }
 
@@ -393,16 +393,13 @@
                 return;
             }
 
-            // Sortiraj prema odabranoj opciji
             const sortBy = document.getElementById('sortBy').value;
             const sortedData = [...data].sort((a, b) => {
                 if (sortBy === 'route') {
-                    // Sortiranje po broju linije
                     const numA = parseInt(a.linija.replace(/\D/g, '')) || 0;
                     const numB = parseInt(b.linija.replace(/\D/g, '')) || 0;
                     return numA - numB;
                 } else {
-                    // Sortiranje po broju vozila (default)
                     const numA = parseInt(a.vozilo.replace(/\D/g, '')) || 0;
                     const numB = parseInt(b.vozilo.replace(/\D/g, '')) || 0;
                     return numA - numB;
@@ -415,7 +412,7 @@
                     <td>${vehicle.linija}</td>
                     <td>${vehicle.polazak}</td>
                     <td>${vehicle.smer}</td>
-                    <td><small>${vehicle.datum}</small></td>
+                    <td><small>${vehicle.timestamp}</small></td>
                 </tr>
             `).join('');
         }
@@ -425,15 +422,13 @@
             const routeSearch = document.getElementById('searchRoute').value.toLowerCase();
             const departureSearch = document.getElementById('searchDeparture').value.toLowerCase();
             const directionSearch = document.getElementById('searchDirection').value.toLowerCase();
-            const dateSearch = document.getElementById('searchDate').value.toLowerCase();
 
             const filtered = allData.filter(vehicle => {
                 return (
                     vehicle.vozilo.toLowerCase().includes(vehicleSearch) &&
                     vehicle.linija.toLowerCase().includes(routeSearch) &&
                     vehicle.polazak.toLowerCase().includes(departureSearch) &&
-                    vehicle.smer.toLowerCase().includes(directionSearch) &&
-                    vehicle.datum.toLowerCase().includes(dateSearch)
+                    vehicle.smer.toLowerCase().includes(directionSearch)
                 );
             });
 
@@ -448,8 +443,15 @@
             document.getElementById('totalRoutes').textContent = uniqueRoutes.size;
         }
 
-        // Učitaj podatke pri startovanju
+        // Inicijalizacija
+        setTodayDate();
         loadData();
+
+        // Auto-refresh svakih 60 sekundi
+        setInterval(() => {
+            console.log('Auto-refreshing...');
+            loadData();
+        }, 60000);
     </script>
 </body>
 </html>
