@@ -50,7 +50,7 @@ export default async function handler(req, res) {
 
     const sheets = google.sheets({ version: 'v4', auth });
 
-    // Kreiraj timestamp za datum i vreme
+    // Timestamp
     const timestamp = new Date().toLocaleString('sr-RS', { 
       timeZone: 'Europe/Belgrade',
       year: 'numeric',
@@ -63,25 +63,42 @@ export default async function handler(req, res) {
 
     const sheetName = 'Sheet1';
 
-    // Prvo pročitaj postojeće podatke
-    let existingData = [];
-    try {
-      const readResponse = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `${sheetName}!A2:F`,
-      });
-      existingData = readResponse.data.values || [];
-      console.log(`Found ${existingData.length} existing rows`);
-    } catch (readError) {
-      console.log('No existing data or read error:', readError.message);
+    // Helper funkcija za retry logiku
+    async function retryOperation(operation, maxRetries = 3) {
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          return await operation();
+        } catch (error) {
+          console.log(`Attempt ${i + 1} failed:`, error.message);
+          if (i === maxRetries - 1) throw error;
+          // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 500));
+        }
+      }
     }
 
-    // Kreiraj mapu postojećih vozila (vozilo -> row index)
+    // Prvo pročitaj postojeće podatke SA RETRY-em
+    let existingData = [];
+    try {
+      existingData = await retryOperation(async () => {
+        const readResponse = await sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: `${sheetName}!A2:F`,
+        });
+        return readResponse.data.values || [];
+      });
+      console.log(`Found ${existingData.length} existing rows`);
+    } catch (readError) {
+      console.error('Failed to read existing data after retries:', readError.message);
+      // Nastavi dalje čak i ako read failuje
+    }
+
+    // Kreiraj mapu postojećih vozila
     const existingVehicles = new Map();
     existingData.forEach((row, index) => {
-      if (row[0]) { // Ako postoji broj vozila
+      if (row[0]) {
         existingVehicles.set(row[0], {
-          rowIndex: index + 2, // +2 jer počinje od A2
+          rowIndex: index + 2,
           data: row
         });
       }
@@ -89,67 +106,123 @@ export default async function handler(req, res) {
 
     let newCount = 0;
     let updateCount = 0;
+    const errors = [];
 
-    // Proces svako vozilo
-    for (const v of vehicles) {
+    // Grupiši operacije - prvo UPDATE, pa tek onda APPEND
+    const toUpdate = [];
+    const toAppend = [];
+
+    vehicles.forEach(v => {
       const vehicleLabel = v.vehicleLabel || '';
       const rowData = [
         vehicleLabel,
         v.routeDisplayName || '',
         v.startTime || '',
         v.destName || '',
-        timestamp,  // Kolona E - vreme upisa
-        timestamp.split(',')[0].trim()  // Kolona F - samo datum
+        timestamp,
+        timestamp.split(',')[0].trim()
       ];
 
       if (existingVehicles.has(vehicleLabel)) {
-        // AŽURIRAJ postojeći red
-        const existingRow = existingVehicles.get(vehicleLabel);
-        try {
+        toUpdate.push({
+          label: vehicleLabel,
+          rowIndex: existingVehicles.get(vehicleLabel).rowIndex,
+          data: rowData
+        });
+      } else {
+        toAppend.push({
+          label: vehicleLabel,
+          data: rowData
+        });
+      }
+    });
+
+    console.log(`Operations planned: ${toUpdate.length} updates, ${toAppend.length} new`);
+
+    // Izvrši UPDATE operacije
+    for (const item of toUpdate) {
+      try {
+        await retryOperation(async () => {
           await sheets.spreadsheets.values.update({
             spreadsheetId,
-            range: `${sheetName}!A${existingRow.rowIndex}:F${existingRow.rowIndex}`,
+            range: `${sheetName}!A${item.rowIndex}:F${item.rowIndex}`,
             valueInputOption: 'RAW',
             resource: {
-              values: [rowData]
+              values: [item.data]
             }
           });
-          updateCount++;
-          console.log(`Updated vehicle ${vehicleLabel} at row ${existingRow.rowIndex}`);
-        } catch (updateError) {
-          console.error(`Error updating ${vehicleLabel}:`, updateError.message);
-        }
-      } else {
-        // DODAJ novi red
-        try {
+        });
+        updateCount++;
+        console.log(`✓ Updated ${item.label} at row ${item.rowIndex}`);
+      } catch (updateError) {
+        errors.push(`Update failed for ${item.label}: ${updateError.message}`);
+        console.error(`✗ Update error for ${item.label}:`, updateError.message);
+      }
+    }
+
+    // Pauza između operacija
+    if (toUpdate.length > 0 && toAppend.length > 0) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    // Izvrši APPEND operacije - SVA VOZILA ODJEDNOM u BATCH-u
+    if (toAppend.length > 0) {
+      try {
+        await retryOperation(async () => {
           await sheets.spreadsheets.values.append({
             spreadsheetId,
             range: `${sheetName}!A2`,
             valueInputOption: 'RAW',
             insertDataOption: 'INSERT_ROWS',
             resource: {
-              values: [rowData]
+              values: toAppend.map(item => item.data) // SVE odjednom!
             }
           });
-          newCount++;
-          console.log(`Added new vehicle ${vehicleLabel}`);
-          
-          // Dodaj u mapu da ne dodamo duplikat u istom batch-u
-          existingVehicles.set(vehicleLabel, { rowIndex: -1, data: rowData });
-        } catch (appendError) {
-          console.error(`Error adding ${vehicleLabel}:`, appendError.message);
+        });
+        newCount = toAppend.length;
+        console.log(`✓ Added ${newCount} new vehicles in batch`);
+      } catch (appendError) {
+        errors.push(`Batch append failed: ${appendError.message}`);
+        console.error(`✗ Batch append error:`, appendError.message);
+        
+        // Fallback: pokušaj pojedinačno
+        console.log('Trying individual append as fallback...');
+        for (const item of toAppend) {
+          try {
+            await retryOperation(async () => {
+              await sheets.spreadsheets.values.append({
+                spreadsheetId,
+                range: `${sheetName}!A2`,
+                valueInputOption: 'RAW',
+                insertDataOption: 'INSERT_ROWS',
+                resource: {
+                  values: [item.data]
+                }
+              });
+            });
+            newCount++;
+            console.log(`✓ Added ${item.label} individually`);
+            // Mali delay između pojedinačnih append-ova
+            await new Promise(resolve => setTimeout(resolve, 200));
+          } catch (individualError) {
+            errors.push(`Individual append failed for ${item.label}: ${individualError.message}`);
+            console.error(`✗ Failed to add ${item.label}:`, individualError.message);
+          }
         }
       }
     }
 
-    // Pokušaj sortiranje (opcionalno)
+    // Sortiranje - SAMO ako je bilo novih vozila
     if (newCount > 0) {
+      // Pauza pre sortiranja
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       try {
-        await sheets.spreadsheets.batchUpdate({
-          spreadsheetId,
-          resource: {
-            requests: [
-              {
+        await retryOperation(async () => {
+          await sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            resource: {
+              requests: [{
                 sortRange: {
                   range: {
                     sheetId: 0,
@@ -157,33 +230,39 @@ export default async function handler(req, res) {
                     startColumnIndex: 0,
                     endColumnIndex: 6,
                   },
-                  sortSpecs: [
-                    {
-                      dimensionIndex: 0, // Sortiraj po vozilu
-                      sortOrder: 'ASCENDING',
-                    },
-                  ],
+                  sortSpecs: [{
+                    dimensionIndex: 0,
+                    sortOrder: 'ASCENDING',
+                  }],
                 },
-              },
-            ],
-          },
+              }],
+            },
+          });
         });
-        console.log('Data sorted successfully');
+        console.log('✓ Data sorted successfully');
       } catch (sortError) {
-        console.warn('Sort error (non-critical):', sortError.message);
+        errors.push(`Sort failed: ${sortError.message}`);
+        console.warn('✗ Sort error (non-critical):', sortError.message);
       }
     }
 
     console.log('=== Update Complete ===');
 
-    res.status(200).json({ 
+    const response = { 
       success: true, 
       newVehicles: newCount,
       updatedVehicles: updateCount,
       totalProcessed: vehicles.length,
       timestamp,
       sheetUsed: sheetName
-    });
+    };
+
+    if (errors.length > 0) {
+      response.warnings = errors;
+      response.partialSuccess = true;
+    }
+
+    res.status(200).json(response);
 
   } catch (error) {
     console.error('Unexpected error:', error);
@@ -192,4 +271,4 @@ export default async function handler(req, res) {
       details: error.message
     });
   }
-}
+          }
