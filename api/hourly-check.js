@@ -10,6 +10,29 @@ export default async function handler(req, res) {
   try {
     console.log('🕐 Hourly check triggered at:', new Date().toISOString());
     
+    // PROVERA: Da li treba resetovati sheet (svaki dan u 01:00)
+    const now = new Date();
+    const belgradTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
+    const currentHour = belgradTime.getHours();
+    
+    if (currentHour === 1) {
+      console.log('🔄 Resetting departures sheet (scheduled at 01:00)...');
+      try {
+        const baseUrl = `https://${req.headers.host}`;
+        const resetResponse = await fetch(`${baseUrl}/api/reset-departures`, {
+          method: 'GET',
+        });
+        
+        if (resetResponse.ok) {
+          console.log('✅ Departures sheet reset successful');
+        } else {
+          console.log('⚠️ Departures sheet reset failed');
+        }
+      } catch (resetError) {
+        console.error('⚠️ Reset error:', resetError.message);
+      }
+    }
+    
     // KORAK 1: Preuzmi podatke o vozilima
     const baseUrl = `https://${req.headers.host}`;
     const vehiclesResponse = await fetch(`${baseUrl}/api/vehicles`, {
@@ -136,7 +159,8 @@ export default async function handler(req, res) {
       `SUCCESS - Updated at ${timestamp} | ` +
       `Vehicles: ${result.totalProcessed || 0} | ` +
       `New: ${result.newVehicles || 0} | ` +
-      `Updated: ${result.updatedVehicles || 0}`
+      `Updated: ${result.updatedVehicles || 0}` +
+      (currentHour === 1 ? ' | RESET EXECUTED' : '')
     );
     
   } catch (error) {
