@@ -121,8 +121,20 @@ export default async function handler(req, res) {
 
     console.log(`Found ${bazaRows.length} vehicles in Baza`);
 
-    // Grupisanje po linijama i smerovima
+    // Datum danas (u Beogradu)
+    const now = new Date();
+    const belgradTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
+    const todayDate = belgradTime.toLocaleDateString('sr-RS', { 
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+
+    console.log(`Today's date: ${todayDate}`);
+
+    // Grupisanje po linijama i smerovima - samo današnja vozila
     const routeMap = {};
+    let skippedOld = 0;
     
     bazaRows.forEach(row => {
       const vozilo = row[0] || '';
@@ -130,8 +142,15 @@ export default async function handler(req, res) {
       const polazak = row[2] || '';
       const smer = row[3] || '';
       const timestamp = row[4] || '';
+      const datum = row[5] || '';
 
       if (!linija || !polazak || !smer) return;
+
+      // Proveri da li je vozilo viđeno danas
+      if (datum !== todayDate) {
+        skippedOld++;
+        return;
+      }
 
       if (!routeMap[linija]) {
         routeMap[linija] = {};
@@ -148,7 +167,16 @@ export default async function handler(req, res) {
       });
     });
 
-    console.log(`Grouped into ${Object.keys(routeMap).length} routes`);
+    console.log(`Grouped into ${Object.keys(routeMap).length} routes (skipped ${skippedOld} old vehicles)`);
+
+    if (Object.keys(routeMap).length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No vehicles seen today',
+        newDepartures: 0,
+        updatedDepartures: 0
+      });
+    }
 
     // KORAK 2: Proveri/kreiraj Polasci sheet
     const sheetName = 'Polasci';
