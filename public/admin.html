@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - MapaBus</title>
+    <script src="/auth-check.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 28px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #1e3c72;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+        }
+
+        th {
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-approved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-rejected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            margin-right: 5px;
+        }
+
+        .btn-approve {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-reject {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-approve:hover {
+            background: #218838;
+        }
+
+        .btn-reject:hover {
+            background: #c82333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #1e3c72;
+        }
+
+        .ip-list {
+            font-size: 11px;
+            color: #666;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Admin Panel - Upravljanje korisnicima</h1>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalUsers">0</div>
+                <div class="stat-label">Ukupno korisnika</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="pendingUsers">0</div>
+                <div class="stat-label">Na čekanju</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="approvedUsers">0</div>
+                <div class="stat-label">Odobreno</div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Korisničko ime</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Registrovan</th>
+                        <th>Poslednja IP</th>
+                        <th>IP Istorija</th>
+                        <th>Akcije</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTable">
+                    <tr>
+                        <td colspan="7" class="loading">Učitavanje...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // NAPOMENA: U produkciji, proveri da li je korisnik ADMIN!
+        // Dodaj admin flag u Users sheet i proveri ga ovde
+
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/auth?action=listUsers');
+                const data = await response.json();
+
+                if (data.success) {
+                    displayUsers(data.users);
+                    updateStats(data.users);
+                } else {
+                    document.getElementById('usersTable').innerHTML = 
+                        '<tr><td colspan="7" style="text-align:center; color:#dc3545;">Greška pri učitavanju</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('usersTable').innerHTML = 
+                    '<tr><td colspan="7" style="text-align:center; color:#dc3545;">Greška pri povezivanju</td></tr>';
+            }
+        }
+
+        function displayUsers(users) {
+            const tbody = document.getElementById('usersTable');
+            
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Nema korisnika</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map((user, index) => {
+                let statusClass = 'status-pending';
+                if (user.status === 'approved') statusClass = 'status-approved';
+                if (user.status === 'rejected') statusClass = 'status-rejected';
+
+                let actions = '';
+                if (user.status === 'pending') {
+                    actions = `
+                        <button class="action-btn btn-approve" onclick="updateStatus(${index}, 'approved')">
+                            ✓ Odobri
+                        </button>
+                        <button class="action-btn btn-reject" onclick="updateStatus(${index}, 'rejected')">
+                            ✗ Odbij
+                        </button>
+                    `;
+                }
+
+                return `
+                    <tr>
+                        <td><strong>${user.username}</strong></td>
+                        <td>${user.email}</td>
+                        <td><span class="status-badge ${statusClass}">${user.status.toUpperCase()}</span></td>
+                        <td>${user.registeredAt}</td>
+                        <td>${user.lastIP}</td>
+                        <td><span class="ip-list" title="${user.ipHistory}">${user.ipHistory}</span></td>
+                        <td>${actions}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateStats(users) {
+            const total = users.length;
+            const pending = users.filter(u => u.status === 'pending').length;
+            const approved = users.filter(u => u.status === 'approved').length;
+
+            document.getElementById('totalUsers').textContent = total;
+            document.getElementById('pendingUsers').textContent = pending;
+            document.getElementById('approvedUsers').textContent = approved;
+        }
+
+        async function updateStatus(userIndex, newStatus) {
+            if (!confirm(`Da li ste sigurni da želite da ${newStatus === 'approved' ? 'odobrite' : 'odbijete'} ovog korisnika?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin-users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        action: 'updateStatus',
+                        userIndex: userIndex + 2, // +2 jer sheet ima header
+                        status: newStatus
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Status ažuriran!');
+                    loadUsers();
+                } else {
+                    alert('Greška: ' + data.message);
+                }
+            } catch (error) {
+                alert('Greška pri povezivanju sa serverom');
+            }
+        }
+
+        // Učitaj korisnike
+        loadUsers();
+
+
+    </script>
+</body>
+</html>
