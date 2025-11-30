@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // ===== NOVI DEO: GET za čitanje podataka =====
+  // ===== GET za čitanje podataka =====
   if (req.method === 'GET') {
     console.log('=== Departures Sheet Read Request ===');
     
@@ -40,7 +40,6 @@ export default async function handler(req, res) {
       const sheets = google.sheets({ version: 'v4', auth });
       const sheetName = 'Polasci';
 
-      // Čitaj sve podatke
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
         range: `${sheetName}!A1:J`,
@@ -49,7 +48,6 @@ export default async function handler(req, res) {
       const rows = response.data.values || [];
       console.log(`Read ${rows.length} rows from sheet`);
 
-      // Parsiraj podatke u strukturu
       const routes = [];
       let currentRoute = null;
       let currentDirection = null;
@@ -57,10 +55,8 @@ export default async function handler(req, res) {
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         
-        // Skip prazni redovi i reset poruke
         if (!row[0] || row[0].includes('resetovan')) continue;
         
-        // Novi route
         if (row[0].startsWith('Linija ')) {
           if (currentRoute) {
             routes.push(currentRoute);
@@ -72,7 +68,6 @@ export default async function handler(req, res) {
           };
           currentDirection = null;
         }
-        // Novi smer
         else if (row[0].startsWith('Smer: ')) {
           if (currentRoute) {
             currentDirection = {
@@ -82,11 +77,9 @@ export default async function handler(req, res) {
             currentRoute.directions.push(currentDirection);
           }
         }
-        // Skip header reda
         else if (row[0] === 'Polazak') {
           continue;
         }
-        // Polazak
         else if (currentDirection && row[0] && row[0].match(/^\d{1,2}:\d{2}/)) {
           currentDirection.departures.push({
             startTime: row[0],
@@ -96,7 +89,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // Dodaj poslednji route
       if (currentRoute) {
         routes.push(currentRoute);
       }
@@ -118,12 +110,12 @@ export default async function handler(req, res) {
     }
   }
 
-  // ===== ORIGINALNI DEO: POST za ažuriranje =====
+  // ===== POST za kumulativno ažuriranje (BEZ BRISANJA) =====
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  console.log('=== Departures Sheet Update Request ===');
+  console.log('=== Departures Sheet Cumulative Update Request ===');
   
   try {
     const { vehicles } = req.body;
@@ -171,8 +163,8 @@ export default async function handler(req, res) {
       second: '2-digit'
     });
 
-    // Grupisanje vozila po linijama
-    const routeMap = {};
+    // Grupisanje novih vozila po linijama
+    const newRouteMap = {};
     
     vehicles.forEach(v => {
       const route = v.routeDisplayName || v.routeId;
@@ -180,31 +172,22 @@ export default async function handler(req, res) {
       const vehicleLabel = v.vehicleLabel || '';
       const startTime = v.startTime || 'N/A';
       
-      if (!routeMap[route]) {
-        routeMap[route] = {};
+      if (!newRouteMap[route]) {
+        newRouteMap[route] = {};
       }
       
-      if (!routeMap[route][destName]) {
-        routeMap[route][destName] = [];
+      if (!newRouteMap[route][destName]) {
+        newRouteMap[route][destName] = [];
       }
       
-      routeMap[route][destName].push({
+      newRouteMap[route][destName].push({
         startTime: startTime,
         vehicleLabel: vehicleLabel,
         timestamp: timestamp
       });
     });
 
-    // Sortiraj polaske po vremenu
-    for (let route in routeMap) {
-      for (let direction in routeMap[route]) {
-        routeMap[route][direction].sort((a, b) => {
-          return a.startTime.localeCompare(b.startTime);
-        });
-      }
-    }
-
-    console.log(`Grouped into ${Object.keys(routeMap).length} routes`);
+    console.log(`Grouped into ${Object.keys(newRouteMap).length} routes`);
 
     // Proveri/Kreiraj sheet "Polasci"
     const sheetName = 'Polasci';
@@ -245,8 +228,11 @@ export default async function handler(req, res) {
       throw error;
     }
 
-    // Pročitaj postojeće podatke
+    // ===== KLJUČNA PROMENA: Pročitaj postojeće podatke i mapiraj ih =====
     let existingData = [];
+    const existingDeparturesMap = new Map(); // Key: "route|direction|startTime|vehicle"
+    const routeStructure = new Map(); // Struktura: route -> direction -> departures[]
+    
     try {
       const readResponse = await sheets.spreadsheets.values.get({
         spreadsheetId,
@@ -254,158 +240,214 @@ export default async function handler(req, res) {
       });
       existingData = readResponse.data.values || [];
       console.log(`Found ${existingData.length} existing rows`);
-    } catch (readError) {
-      console.log('No existing data');
-    }
 
-    // Pronađi postojeće linije
-    const existingRoutes = new Map();
-    let currentRoute = null;
-    
-    for (let i = 0; i < existingData.length; i++) {
-      const row = existingData[i];
-      if (row[0] && row[0].startsWith('Linija ')) {
-        currentRoute = row[0].replace('Linija ', '');
-        if (!existingRoutes.has(currentRoute)) {
-          existingRoutes.set(currentRoute, {
-            startRow: i,
-            directions: new Map()
-          });
+      // Parsiranje postojećih podataka
+      let currentRoute = null;
+      let currentDirection = null;
+      
+      for (let i = 0; i < existingData.length; i++) {
+        const row = existingData[i];
+        
+        if (row[0] && row[0].startsWith('Linija ')) {
+          currentRoute = row[0].replace('Linija ', '').trim();
+          if (!routeStructure.has(currentRoute)) {
+            routeStructure.set(currentRoute, new Map());
+          }
+        } 
+        else if (currentRoute && row[0] && row[0].startsWith('Smer: ')) {
+          currentDirection = row[0].replace('Smer: ', '').trim();
+          if (!routeStructure.get(currentRoute).has(currentDirection)) {
+            routeStructure.get(currentRoute).set(currentDirection, []);
+          }
         }
-      } else if (currentRoute && row[0] && row[0].startsWith('Smer: ')) {
-        const direction = row[0].replace('Smer: ', '');
-        existingRoutes.get(currentRoute).directions.set(direction, {
-          row: i,
-          departures: new Map()
-        });
-      } else if (currentRoute && row[0] && row[0] !== '') {
-        const time = row[0];
-        const vehicle = row[1];
-        const lastDir = Array.from(existingRoutes.get(currentRoute).directions.values()).pop();
-        if (lastDir) {
-          lastDir.departures.set(`${time}_${vehicle}`, {
+        else if (currentRoute && currentDirection && row[0] && row[0].match(/^\d{1,2}:\d{2}/)) {
+          const startTime = row[0];
+          const vehicleLabel = row[1] || '';
+          const oldTimestamp = row[2] || '';
+          
+          const key = `${currentRoute}|${currentDirection}|${startTime}|${vehicleLabel}`;
+          existingDeparturesMap.set(key, {
             row: i,
-            data: row
+            startTime,
+            vehicleLabel,
+            timestamp: oldTimestamp
+          });
+          
+          routeStructure.get(currentRoute).get(currentDirection).push({
+            startTime,
+            vehicleLabel,
+            timestamp: oldTimestamp
           });
         }
       }
+      
+      console.log(`Mapped ${existingDeparturesMap.size} existing departures`);
+      
+    } catch (readError) {
+      console.log('No existing data, starting fresh');
     }
 
-    // Gradi nove podatke
-    const newData = [];
-    let updatedRoutes = 0;
-    let newRoutes = 0;
-    let updatedDepartures = 0;
-    let newDepartures = 0;
+    // ===== Integracija novih podataka sa postojećima =====
+    let updatedCount = 0;
+    let newCount = 0;
+    const updateRequests = [];
+    const appendRows = [];
 
-    // Sortiraj linije numerički
-    const sortedRoutes = Object.keys(routeMap).sort((a, b) => {
-      const numA = parseInt(a.replace(/\D/g, '')) || 0;
-      const numB = parseInt(b.replace(/\D/g, '')) || 0;
-      return numA - numB;
-    });
-
-    for (let route of sortedRoutes) {
-      const directions = routeMap[route];
-      const isExisting = existingRoutes.has(route);
+    // Prolazak kroz nove podatke
+    for (let route in newRouteMap) {
+      const directions = newRouteMap[route];
       
-      if (isExisting) {
-        updatedRoutes++;
-      } else {
-        newRoutes++;
-      }
-      
-      // Header linije
-      newData.push([`Linija ${route}`, '', '', '', '', '', '', '', '', '']);
-      
-      // Sortiraj smerove
-      const sortedDirections = Object.keys(directions).sort();
-      
-      for (let direction of sortedDirections) {
-        const departures = directions[direction];
+      // Ako linija ne postoji, dodaj celu strukturu
+      if (!routeStructure.has(route)) {
+        console.log(`New route: ${route}`);
+        routeStructure.set(route, new Map());
         
-        // Smer header
-        newData.push([`Smer: ${direction}`, '', '', '', '', '', '', '', '', '']);
-        newData.push(['Polazak', 'Vozilo', 'Poslednji put viđen', '', '', '', '', '', '', '']);
+        // Dodaj header za novu liniju
+        appendRows.push([`Linija ${route}`, '', '', '', '', '', '', '', '', '']);
         
-        // Dodaj polaske
-        departures.forEach(dep => {
-          const existingRoute = existingRoutes.get(route);
-          const existingDir = existingRoute?.directions.get(direction);
-          const key = `${dep.startTime}_${dep.vehicleLabel}`;
+        for (let direction in directions) {
+          routeStructure.get(route).set(direction, []);
           
-          if (existingDir?.departures.has(key)) {
-            updatedDepartures++;
-          } else {
-            newDepartures++;
-          }
+          appendRows.push([`Smer: ${direction}`, '', '', '', '', '', '', '', '', '']);
+          appendRows.push(['Polazak', 'Vozilo', 'Poslednji put viđen', '', '', '', '', '', '', '']);
           
-          newData.push([
-            dep.startTime,
-            dep.vehicleLabel,
-            dep.timestamp,
-            '', '', '', '', '', '', ''
-          ]);
-        });
+          const departures = directions[direction].sort((a, b) => 
+            a.startTime.localeCompare(b.startTime)
+          );
+          
+          departures.forEach(dep => {
+            appendRows.push([
+              dep.startTime,
+              dep.vehicleLabel,
+              dep.timestamp,
+              '', '', '', '', '', '', ''
+            ]);
+            
+            routeStructure.get(route).get(direction).push(dep);
+            newCount++;
+          });
+          
+          appendRows.push(['', '', '', '', '', '', '', '', '', '']);
+        }
         
-        newData.push(['', '', '', '', '', '', '', '', '', '']);
+        appendRows.push(['', '', '', '', '', '', '', '', '', '']);
       }
-      
-      newData.push(['', '', '', '', '', '', '', '', '', '']);
-    }
-
-    console.log(`Routes: ${newRoutes} new, ${updatedRoutes} updated`);
-    console.log(`Departures: ${newDepartures} new, ${updatedDepartures} updated`);
-
-    // Obriši stare podatke i upiši nove
-    try {
-      await sheets.spreadsheets.values.clear({
-        spreadsheetId,
-        range: `${sheetName}!A1:J`
-      });
-      
-      const BATCH_SIZE = 1000;
-      const batches = [];
-      
-      for (let i = 0; i < newData.length; i += BATCH_SIZE) {
-        batches.push(newData.slice(i, i + BATCH_SIZE));
-      }
-
-      console.log(`Writing ${batches.length} batches`);
-
-      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-        const batch = batches[batchIndex];
-        const startRow = (batchIndex * BATCH_SIZE) + 1;
-
-        await sheets.spreadsheets.values.update({
-          spreadsheetId,
-          range: `${sheetName}!A${startRow}:J`,
-          valueInputOption: 'RAW',
-          resource: {
-            values: batch
+      // Ako linija postoji, proveri smerove i polaske
+      else {
+        for (let direction in directions) {
+          
+          // Ako smer ne postoji, dodaj ga
+          if (!routeStructure.get(route).has(direction)) {
+            console.log(`New direction: ${route} -> ${direction}`);
+            routeStructure.get(route).set(direction, []);
+            
+            // Pronađi gde da ubacimo novi smer (nakon poslednjeg smera te linije)
+            // Za sada samo append na kraj
+            appendRows.push([`Smer: ${direction}`, '', '', '', '', '', '', '', '', '']);
+            appendRows.push(['Polazak', 'Vozilo', 'Poslednji put viđen', '', '', '', '', '', '', '']);
+            
+            const departures = directions[direction].sort((a, b) => 
+              a.startTime.localeCompare(b.startTime)
+            );
+            
+            departures.forEach(dep => {
+              appendRows.push([
+                dep.startTime,
+                dep.vehicleLabel,
+                dep.timestamp,
+                '', '', '', '', '', '', ''
+              ]);
+              
+              routeStructure.get(route).get(direction).push(dep);
+              newCount++;
+            });
+            
+            appendRows.push(['', '', '', '', '', '', '', '', '', '']);
           }
-        });
-        
-        console.log(`✓ Batch ${batchIndex + 1}/${batches.length} written`);
-
-        if (batchIndex < batches.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 200));
+          // Smer postoji, proveri pojedinačne polaske
+          else {
+            const departures = directions[direction];
+            
+            departures.forEach(dep => {
+              const key = `${route}|${direction}|${dep.startTime}|${dep.vehicleLabel}`;
+              
+              // Ako polazak već postoji, ažuriraj samo timestamp
+              if (existingDeparturesMap.has(key)) {
+                const existing = existingDeparturesMap.get(key);
+                updateRequests.push({
+                  range: `${sheetName}!C${existing.row + 1}`,
+                  values: [[dep.timestamp]]
+                });
+                updatedCount++;
+              }
+              // Ako je novi polazak, dodaj ga
+              else {
+                // Dodajemo na kraj smera - u appendRows
+                // (Alternativa: insert na pravo mesto sa sortiranjem)
+                appendRows.push([
+                  dep.startTime,
+                  dep.vehicleLabel,
+                  dep.timestamp,
+                  '', '', '', '', '', '', ''
+                ]);
+                
+                routeStructure.get(route).get(direction).push(dep);
+                newCount++;
+              }
+            });
+          }
         }
       }
+    }
 
-      // Formatiraj headere
-      const formatRequests = [];
+    console.log(`Updates: ${updatedCount}, New departures: ${newCount}`);
+
+    // ===== Primeni izmene =====
+    
+    // 1. Ažuriraj timestamp-ove postojećih polazaka
+    if (updateRequests.length > 0) {
+      const batchUpdateData = {
+        spreadsheetId,
+        resource: {
+          valueInputOption: 'RAW',
+          data: updateRequests
+        }
+      };
       
-      for (let i = 0; i < newData.length; i++) {
-        const row = newData[i];
+      await sheets.spreadsheets.values.batchUpdate(batchUpdateData);
+      console.log(`✓ Updated ${updateRequests.length} timestamps`);
+    }
+
+    // 2. Dodaj nove redove na kraj
+    if (appendRows.length > 0) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: `${sheetName}!A:J`,
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+        resource: {
+          values: appendRows
+        }
+      });
+      console.log(`✓ Appended ${appendRows.length} new rows`);
+    }
+
+    // 3. Primeni formatiranje na nove redove
+    if (appendRows.length > 0) {
+      const formatRequests = [];
+      const startRow = existingData.length; // Početak novih redova
+      
+      for (let i = 0; i < appendRows.length; i++) {
+        const row = appendRows[i];
+        const actualRow = startRow + i;
         
         if (row[0] && row[0].startsWith('Linija ')) {
           formatRequests.push({
             repeatCell: {
               range: {
                 sheetId: sheetId,
-                startRowIndex: i,
-                endRowIndex: i + 1,
+                startRowIndex: actualRow,
+                endRowIndex: actualRow + 1,
                 startColumnIndex: 0,
                 endColumnIndex: 10
               },
@@ -427,8 +469,8 @@ export default async function handler(req, res) {
             repeatCell: {
               range: {
                 sheetId: sheetId,
-                startRowIndex: i,
-                endRowIndex: i + 1,
+                startRowIndex: actualRow,
+                endRowIndex: actualRow + 1,
                 startColumnIndex: 0,
                 endColumnIndex: 10
               },
@@ -450,8 +492,8 @@ export default async function handler(req, res) {
             repeatCell: {
               range: {
                 sheetId: sheetId,
-                startRowIndex: i,
-                endRowIndex: i + 1,
+                startRowIndex: actualRow,
+                endRowIndex: actualRow + 1,
                 startColumnIndex: 0,
                 endColumnIndex: 3
               },
@@ -479,21 +521,15 @@ export default async function handler(req, res) {
         });
         console.log(`✓ Applied ${formatRequests.length} format rules`);
       }
-
-    } catch (updateError) {
-      console.error('Failed to write data:', updateError.message);
-      throw updateError;
     }
 
-    console.log('=== Departures Update Complete ===');
+    console.log('=== Cumulative Update Complete ===');
 
     res.status(200).json({ 
       success: true, 
-      newRoutes: newRoutes,
-      updatedRoutes: updatedRoutes,
-      newDepartures: newDepartures,
-      updatedDepartures: updatedDepartures,
-      totalRoutes: sortedRoutes.length,
+      newDepartures: newCount,
+      updatedDepartures: updatedCount,
+      totalNewRows: appendRows.length,
       timestamp,
       sheetUsed: sheetName
     });
@@ -505,4 +541,4 @@ export default async function handler(req, res) {
       details: error.message
     });
   }
-        }
+      }
