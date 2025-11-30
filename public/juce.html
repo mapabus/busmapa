@@ -272,7 +272,7 @@
     <div class="container">
         <div class="header">
             <div>
-                <h1>📅 Jučerašnji Polasci</h1>
+                <h1>Jučerašnji Polasci</h1>
                 <p class="subtitle">Arhiva polazaka iz prethodnog dana</p>
             </div>
 
@@ -293,11 +293,11 @@
         </div>
 
         <div class="info-banner">
-            <span class="info-banner-icon">ℹ️</span>
+            <span class="info-banner-icon"></span>
             <div>
                 <div class="info-banner-text">
                     <strong>Napomena:</strong> Ovi podaci predstavljaju sve polaske koji su evidentirani juče. 
-                    Sheet se resetuje svakodnevno u 01:00.
+                    Baza se resetuje svakodnevno oko 01:55.
                 </div>
             </div>
         </div>
@@ -343,11 +343,11 @@
                     updateStats(allRoutes);
                     console.log(`✓ Učitano ${allRoutes.length} linija iz jučerašnjih podataka`);
                 } else {
-                    container.innerHTML = '<div class="no-data">📭 Nema jučerašnjih podataka</div>';
+                    container.innerHTML = '<div class="no-data">Nema jučerašnjih podataka</div>';
                 }
             } catch (error) {
                 console.error('Greška:', error);
-                container.innerHTML = '<div class="no-data">❌ Greška pri učitavanju podataka</div>';
+                container.innerHTML = '<div class="no-data">Greška pri učitavanju podataka</div>';
             }
         }
 
@@ -374,7 +374,7 @@
                     return `
                         <div class="direction-section">
                             <div class="direction-title">
-                                🚏 ${direction.directionName} 
+                                 ${direction.directionName} 
                                 <span style="color: #999; font-weight: normal; font-size: 14px;">
                                     (${direction.departures.length} polazaka)
                                 </span>
@@ -389,7 +389,7 @@
                 return `
                     <div class="route-card">
                         <div class="route-header">
-                            🚌 Linija ${route.routeName}
+                            Linija ${route.routeName}
                         </div>
                         ${directionsHTML}
                     </div>
