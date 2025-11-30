@@ -163,31 +163,104 @@ export default async function handler(req, res) {
       second: '2-digit'
     });
 
-    // Grupisanje novih vozila po linijama
+    // ===== NOVA VALIDACIJA I GRUPISANJE =====
     const newRouteMap = {};
+    const validationWarnings = [];
     
     vehicles.forEach(v => {
-      const route = v.routeDisplayName || v.routeId;
-      const destName = v.destName || 'Unknown';
       const vehicleLabel = v.vehicleLabel || '';
+      const routeDisplayName = v.routeDisplayName || '';
+      const routeId = v.routeId || '';
+      
+      // DETALJNO LOGOVANJE
+      console.log(`\n🚌 Vehicle ${vehicleLabel}:`);
+      console.log(`   - routeDisplayName: "${routeDisplayName}"`);
+      console.log(`   - routeId: "${routeId}"`);
+      console.log(`   - destName: "${v.destName}"`);
+      console.log(`   - startTime: "${v.startTime}"`);
+      
+      // PROVERA KONZISTENTNOSTI
+      let finalRoute = null;
+      
+      // Prioritet: routeId preko routeDisplayName (jer je routeId precizniji)
+      if (routeId && routeId.trim() !== '') {
+        finalRoute = routeId.trim();
+        
+        // Ukloni vodeće nule ako postoje (00005 -> 5)
+        if (/^0+\d+$/.test(finalRoute)) {
+          finalRoute = finalRoute.replace(/^0+/, '');
+          console.log(`   ✓ Cleaned routeId: "${finalRoute}"`);
+        }
+      } else if (routeDisplayName && routeDisplayName.trim() !== '') {
+        finalRoute = routeDisplayName.trim();
+        console.log(`   ⚠️ Using routeDisplayName (routeId missing)`);
+      } else {
+        console.log(`   ❌ ERROR: Both routeId and routeDisplayName are empty!`);
+        validationWarnings.push({
+          vehicle: vehicleLabel,
+          issue: 'Missing route information',
+          routeId,
+          routeDisplayName
+        });
+        return; // Preskoči ovo vozilo
+      }
+      
+      // DODATNA VALIDACIJA: Proveri da li se routeDisplayName i routeId slažu
+      if (routeDisplayName && routeId) {
+        const cleanedRouteId = routeId.replace(/^0+/, '');
+        const cleanedDisplayName = routeDisplayName.trim();
+        
+        if (cleanedRouteId !== cleanedDisplayName) {
+          console.log(`   ⚠️ MISMATCH WARNING:`);
+          console.log(`      routeId (cleaned): "${cleanedRouteId}"`);
+          console.log(`      routeDisplayName: "${cleanedDisplayName}"`);
+          
+          validationWarnings.push({
+            vehicle: vehicleLabel,
+            issue: 'Route ID mismatch',
+            routeId: cleanedRouteId,
+            routeDisplayName: cleanedDisplayName,
+            usedRoute: finalRoute
+          });
+        }
+      }
+      
+      const destName = v.destName || 'Unknown';
       const startTime = v.startTime || 'N/A';
       
-      if (!newRouteMap[route]) {
-        newRouteMap[route] = {};
+      console.log(`   → Final route assigned: "${finalRoute}"`);
+      
+      // Dodaj u mapu
+      if (!newRouteMap[finalRoute]) {
+        newRouteMap[finalRoute] = {};
       }
       
-      if (!newRouteMap[route][destName]) {
-        newRouteMap[route][destName] = [];
+      if (!newRouteMap[finalRoute][destName]) {
+        newRouteMap[finalRoute][destName] = [];
       }
       
-      newRouteMap[route][destName].push({
+      newRouteMap[finalRoute][destName].push({
         startTime: startTime,
         vehicleLabel: vehicleLabel,
         timestamp: timestamp
       });
     });
 
-    console.log(`Grouped into ${Object.keys(newRouteMap).length} routes`);
+    console.log(`\n📊 Validation Summary:`);
+    console.log(`   - Total vehicles processed: ${vehicles.length}`);
+    console.log(`   - Routes grouped: ${Object.keys(newRouteMap).length}`);
+    console.log(`   - Validation warnings: ${validationWarnings.length}`);
+    
+    if (validationWarnings.length > 0) {
+      console.log('\n⚠️ Validation Warnings:');
+      validationWarnings.forEach((w, i) => {
+        console.log(`   ${i + 1}. Vehicle ${w.vehicle}:`);
+        console.log(`      Issue: ${w.issue}`);
+        if (w.routeId) console.log(`      routeId: ${w.routeId}`);
+        if (w.routeDisplayName) console.log(`      routeDisplayName: ${w.routeDisplayName}`);
+        if (w.usedRoute) console.log(`      Used: ${w.usedRoute}`);
+      });
+    }
 
     // Proveri/Kreiraj sheet "Polasci"
     const sheetName = 'Polasci';
@@ -228,10 +301,10 @@ export default async function handler(req, res) {
       throw error;
     }
 
-    // ===== KLJUČNA PROMENA: Pročitaj postojeće podatke i mapiraj ih =====
+    // ===== Pročitaj postojeće podatke i mapiraj ih =====
     let existingData = [];
-    const existingDeparturesMap = new Map(); // Key: "route|direction|startTime|vehicle"
-    const routeStructure = new Map(); // Struktura: route -> direction -> departures[]
+    const existingDeparturesMap = new Map();
+    const routeStructure = new Map();
     
     try {
       const readResponse = await sheets.spreadsheets.values.get({
@@ -241,7 +314,6 @@ export default async function handler(req, res) {
       existingData = readResponse.data.values || [];
       console.log(`Found ${existingData.length} existing rows`);
 
-      // Parsiranje postojećih podataka
       let currentRoute = null;
       let currentDirection = null;
       
@@ -287,14 +359,7 @@ export default async function handler(req, res) {
       console.log('No existing data, starting fresh');
     }
 
-    // ===== Integracija novih podataka sa postojećima =====
-    let updatedCount = 0;
-    let newCount = 0;
-    const updateRequests = [];
-    const appendRows = [];
-
-    // ===== NOVO: Grupisanje vozila po vremenu polaska =====
-    // Prvo transformišemo nove podatke da grupišemo vozila po istom vremenu
+    // ===== Grupisanje vozila po vremenu polaska =====
     const processedRouteMap = {};
     
     for (let route in newRouteMap) {
@@ -302,7 +367,7 @@ export default async function handler(req, res) {
       
       for (let direction in newRouteMap[route]) {
         const departures = newRouteMap[route][direction];
-        const timeMap = new Map(); // startTime -> array of vehicles
+        const timeMap = new Map();
         
         departures.forEach(dep => {
           if (!timeMap.has(dep.startTime)) {
@@ -314,26 +379,28 @@ export default async function handler(req, res) {
           });
         });
         
-        // Konvertuj u array sa spojenim vozilima
         processedRouteMap[route][direction] = Array.from(timeMap.entries()).map(([time, vehicles]) => ({
           startTime: time,
           vehicles: vehicles,
           vehicleLabels: vehicles.map(v => v.vehicleLabel).filter(l => l).join(' '),
-          timestamp: vehicles[0].timestamp // Koristi timestamp prvog vozila
+          timestamp: vehicles[0].timestamp
         })).sort((a, b) => a.startTime.localeCompare(b.startTime));
       }
     }
 
-    // Prolazak kroz nove podatke
+    // ===== Integracija novih podataka sa postojećima =====
+    let updatedCount = 0;
+    let newCount = 0;
+    const updateRequests = [];
+    const appendRows = [];
+
     for (let route in processedRouteMap) {
       const directions = processedRouteMap[route];
       
-      // Ako linija ne postoji, dodaj celu strukturu
       if (!routeStructure.has(route)) {
         console.log(`New route: ${route}`);
         routeStructure.set(route, new Map());
         
-        // Dodaj header za novu liniju
         appendRows.push([`Linija ${route}`, '', '', '', '', '', '', '', '', '']);
         
         for (let direction in directions) {
@@ -361,11 +428,9 @@ export default async function handler(req, res) {
         
         appendRows.push(['', '', '', '', '', '', '', '', '', '']);
       }
-      // Ako linija postoji, proveri smerove i polaske
       else {
         for (let direction in directions) {
           
-          // Ako smer ne postoji, dodaj ga
           if (!routeStructure.get(route).has(direction)) {
             console.log(`New direction: ${route} -> ${direction}`);
             routeStructure.get(route).set(direction, []);
@@ -389,15 +454,12 @@ export default async function handler(req, res) {
             
             appendRows.push(['', '', '', '', '', '', '', '', '', '']);
           }
-          // Smer postoji, proveri pojedinačne polaske
           else {
             const departures = directions[direction];
             
             departures.forEach(dep => {
-              // Proveravamo samo po vremenu, ne po vozilu
               const timeKey = `${route}|${direction}|${dep.startTime}`;
               
-              // Pronađi postojeći polazak sa istim vremenom
               let existingDeparture = null;
               for (let [key, value] of existingDeparturesMap.entries()) {
                 if (key.startsWith(timeKey + '|')) {
@@ -406,29 +468,24 @@ export default async function handler(req, res) {
                 }
               }
               
-              // Ako polazak sa tim vremenom već postoji
               if (existingDeparture) {
                 const currentVehicles = existingDeparture.vehicleLabel.split(' ').filter(v => v);
                 const newVehicles = dep.vehicleLabels.split(' ').filter(v => v);
                 
-                // Kombinuj vozila (izbegni duplikate)
                 const allVehicles = [...new Set([...currentVehicles, ...newVehicles])];
                 const combinedVehicles = allVehicles.join(' ');
                 
-                // Ažuriraj i vozilo i timestamp
                 updateRequests.push({
                   range: `${sheetName}!B${existingDeparture.row + 1}:C${existingDeparture.row + 1}`,
                   values: [[combinedVehicles, dep.timestamp]]
                 });
                 
-                // Ažuriraj u mapi
                 existingDeparture.vehicleLabel = combinedVehicles;
                 existingDeparture.timestamp = dep.timestamp;
                 
                 updatedCount++;
                 console.log(`Updated ${dep.startTime}: ${combinedVehicles}`);
               }
-              // Ako je novi polazak, dodaj ga
               else {
                 appendRows.push([
                   dep.startTime,
@@ -450,7 +507,6 @@ export default async function handler(req, res) {
 
     // ===== Primeni izmene =====
     
-    // 1. Ažuriraj timestamp-ove postojećih polazaka
     if (updateRequests.length > 0) {
       const batchUpdateData = {
         spreadsheetId,
@@ -464,7 +520,6 @@ export default async function handler(req, res) {
       console.log(`✓ Updated ${updateRequests.length} timestamps`);
     }
 
-    // 2. Dodaj nove redove na kraj
     if (appendRows.length > 0) {
       await sheets.spreadsheets.values.append({
         spreadsheetId,
@@ -478,10 +533,9 @@ export default async function handler(req, res) {
       console.log(`✓ Appended ${appendRows.length} new rows`);
     }
 
-    // 3. Primeni formatiranje na nove redove
     if (appendRows.length > 0) {
       const formatRequests = [];
-      const startRow = existingData.length; // Početak novih redova
+      const startRow = existingData.length;
       
       for (let i = 0; i < appendRows.length; i++) {
         const row = appendRows[i];
@@ -545,46 +599,4 @@ export default async function handler(req, res) {
               },
               cell: {
                 userEnteredFormat: {
-                  backgroundColor: { red: 0.95, green: 0.95, blue: 0.95 },
-                  textFormat: {
-                    fontSize: 10,
-                    bold: true
-                  }
-                }
-              },
-              fields: 'userEnteredFormat(backgroundColor,textFormat)'
-            }
-          });
-        }
-      }
-
-      if (formatRequests.length > 0) {
-        await sheets.spreadsheets.batchUpdate({
-          spreadsheetId,
-          resource: {
-            requests: formatRequests
-          }
-        });
-        console.log(`✓ Applied ${formatRequests.length} format rules`);
-      }
-    }
-
-    console.log('=== Cumulative Update Complete ===');
-
-    res.status(200).json({ 
-      success: true, 
-      newDepartures: newCount,
-      updatedDepartures: updatedCount,
-      totalNewRows: appendRows.length,
-      timestamp,
-      sheetUsed: sheetName
-    });
-
-  } catch (error) {
-    console.error('Unexpected error:', error);
-    res.status(500).json({ 
-      error: 'Unexpected error',
-      details: error.message
-    });
-  }
-      }
+                  backgroundColor: { red: 0
