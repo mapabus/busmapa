@@ -765,32 +765,40 @@ export default function handler(req, res) {
 setTimeout(checkUrlParameter, 1500);
 
 // ====== AUTOMATSKO UČITAVANJE LINIJE IZ URL-a ======
+let urlLineLoaded = false; // Flag da sprečimo duplo učitavanje
+
 function checkUrlParameter() {
-    const urlParams = new URLSearchParams(window.location.search);
+    if (urlLineLoaded) return; // Već učitano, izađi
+    
+    const urlParams = new URLSearchParams(window. location.search);
     const lineParam = urlParams.get('line');
     
     if (lineParam) {
-        // Sačekaj da se učitaju route names
         const waitForRouteNames = setInterval(() => {
-            if (Object.keys(routeNamesMap).length > 0) {
+            if (Object.keys(routeNamesMap). length > 0) {
                 clearInterval(waitForRouteNames);
                 
-                // Postavi vrednost u input
-                document.getElementById('lineInput').value = lineParam;
+                if (urlLineLoaded) return; // Još jedna provera
+                urlLineLoaded = true;
                 
-                // Klikni dugme za dodavanje
-                dodajLiniju();
+                // Proveri da li je linija već dodata
+                const routeId = findRouteId(lineParam);
+                if (routeId && ! izabraneLinije. includes(routeId)) {
+                    document.getElementById('lineInput').value = lineParam;
+                    dodajLiniju();
+                }
+                
+                // Očisti URL parametar bez refresha
+                window. history.replaceState({}, document.title, window.location.pathname);
             }
         }, 200);
         
-        // Timeout ako se ne učita za 5 sekundi
         setTimeout(() => {
             clearInterval(waitForRouteNames);
         }, 5000);
     }
 }
 
-// Pozovi kada se stranica učita
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(checkUrlParameter, 500);
 });
