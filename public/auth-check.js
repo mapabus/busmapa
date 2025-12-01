@@ -5,7 +5,7 @@
     
     // Ako nema tokena, preusmeri na login
     if (!token) {
-        window.location. href = '/login. html';
+        window.location.href = '/login.html';
         return;
     }
 
@@ -16,16 +16,15 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 action: 'verify', 
-                token: token,
-                userAgent: navigator.userAgent // Šalje informacije o uređaju
+                token: token 
             })
         });
 
-        const data = await response. json();
+        const data = await response.json();
 
-        if (! data.success) {
+        if (!data.success) {
             // Token nije validan, obriši ga i preusmeri na login
-            localStorage. removeItem('authToken');
+            localStorage.removeItem('authToken');
             localStorage.removeItem('username');
             window.location.href = '/login.html';
             return;
@@ -38,10 +37,10 @@
         addLogoutButton(data.username);
 
     } catch (error) {
-        console. error('Auth error:', error);
+        console.error('Auth error:', error);
         localStorage.removeItem('authToken');
         localStorage.removeItem('username');
-        window. location.href = '/login.html';
+        window.location.href = '/login.html';
     }
 })();
 
@@ -56,7 +55,7 @@ function addLogoutButton(username) {
         top: 10px;
         left: 10px;
         z-index: 9999;
-        background: rgba(255, 255, 255, 0. 95);
+        background: rgba(255, 255, 255, 0.95);
         padding: 8px 15px;
         border-radius: 8px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.2);
@@ -86,5 +85,5 @@ function addLogoutButton(username) {
 window.logout = function() {
     localStorage.removeItem('authToken');
     localStorage.removeItem('username');
-    window. location.href = '/login.html';
+    window.location.href = '/login.html';
 }
