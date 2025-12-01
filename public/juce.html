@@ -54,7 +54,7 @@
             gap: 10px;
         }
 
-        .info-banner-icon {
+        . info-banner-icon {
             font-size: 24px;
         }
 
@@ -73,14 +73,24 @@
 
         .search-box {
             display: flex;
-            gap: 15px;
+            gap: 30px;
             align-items: flex-end;
             flex-wrap: wrap;
         }
 
-        .search-group {
+        .search-group-wrapper {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
             flex: 1;
-            min-width: 200px;
+            min-width: 300px;
+        }
+
+        .search-group-wrapper . search-group {
+            flex: 1;
+        }
+
+        .search-group {
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -116,11 +126,12 @@
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
+            white-space: nowrap;
         }
 
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(30, 60, 114, 0.4);
+            box-shadow: 0 6px 20px rgba(30, 60, 114, 0. 4);
         }
 
         button:active {
@@ -200,12 +211,12 @@
             gap: 10px;
         }
 
-        .departure-item {
+        . departure-item {
             background: #f8f9fa;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             padding: 12px 18px;
-            transition: all 0.2s;
+            transition: all 0. 2s;
             display: flex;
             align-items: center;
             gap: 15px;
@@ -272,12 +283,12 @@
         }
 
         .loading::after {
-            content: '...';
+            content: '... ';
             animation: dots 1.5s steps(4, end) infinite;
         }
 
         @keyframes dots {
-            0%, 20% { content: '.'; }
+            0%, 20% { content: '. '; }
             40% { content: '..'; }
             60%, 100% { content: '...'; }
         }
@@ -285,13 +296,20 @@
         @media (max-width: 768px) {
             .search-box {
                 flex-direction: column;
+                gap: 20px;
             }
 
-            .search-group {
+            .search-group-wrapper {
+                flex-direction: column;
+                width: 100%;
+                min-width: unset;
+            }
+
+            .search-group-wrapper .search-group {
                 width: 100%;
             }
 
-            button {
+            .search-group-wrapper button {
                 width: 100%;
             }
 
@@ -326,8 +344,6 @@
                 font-size: 16px;
             }
         }
-
-         
     </style>
 </head>
 <body>
@@ -340,7 +356,7 @@
         <div class="info-banner">
             <div>
                 <div class="info-banner-text">
-                    <strong>Napomena:</strong> Ovi podaci predstavljaju sve polaske koji su evidentirani juče. 
+                    <strong>Napomena:</strong> Ovi podaci predstavljaju sve polaske koji su evidentirani juče.  
                     Baza se resetuje svakodnevno oko 1 ujutru.
                 </div>
             </div>
@@ -348,34 +364,67 @@
 
         <div class="search-container">
             <div class="search-box">
-                <div class="search-group">
-                    <label for="lineSearch">Broj linije:</label>
-                    <input 
-                        type="text" 
-                        id="lineSearch" 
-                        placeholder="Unesite broj linije (npr. 601)"
-                        onkeypress="if(event.key === 'Enter') searchLine()"
-                    >
+                <!-- Grupa za liniju -->
+                <div class="search-group-wrapper">
+                    <div class="search-group">
+                        <label for="lineSearch">Broj linije:</label>
+                        <input 
+                            type="text" 
+                            id="lineSearch" 
+                            placeholder="Unesite broj linije (npr. 601)"
+                        >
+                    </div>
+                    <button id="lineSearchBtn">Pretraži liniju</button>
                 </div>
-                <button onclick="searchLine()">Pretraži</button>
+
+                <!-- Grupa za vozilo -->
+                <div class="search-group-wrapper">
+                    <div class="search-group">
+                        <label for="vehicleSearch">Broj vozila:</label>
+                        <input 
+                            type="text" 
+                            id="vehicleSearch" 
+                            placeholder="npr. P70618"
+                        >
+                    </div>
+                    <button id="vehicleSearchBtn">Pretraži vozilo</button>
+                </div>
             </div>
         </div>
 
         <div id="resultsContainer" class="results-container">
             <div class="empty-state">
-                <div class="empty-state-text">Pretražite liniju</div>
-                <div class="empty-state-subtext">Unesite broj linije</div>
+                <div class="empty-state-text">Pretražite liniju ili vozilo</div>
+                <div class="empty-state-subtext">Unesite broj linije ili broj vozila</div>
             </div>
         </div>
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const lineInput = document.getElementById('lineSearch');
+            const vehicleInput = document.getElementById('vehicleSearch');
+            const lineBtn = document.getElementById('lineSearchBtn');
+            const vehicleBtn = document.getElementById('vehicleSearchBtn');
+
+            lineBtn.addEventListener('click', searchLine);
+            vehicleBtn.addEventListener('click', searchVehicle);
+
+            // Enter za liniju i vozilo
+            lineInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') searchLine();
+            });
+            vehicleInput. addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') searchVehicle();
+            });
+        });
+
         async function searchLine() {
             const searchInput = document.getElementById('lineSearch');
-            const lineNumber = searchInput.value.trim().toUpperCase();
-            const resultsContainer = document.getElementById('resultsContainer');
+            const lineNumber = searchInput.value.trim(). toUpperCase();
+            const resultsContainer = document. getElementById('resultsContainer');
 
-            if (!lineNumber) {
+            if (! lineNumber) {
                 alert('Unesite broj linije');
                 return;
             }
@@ -384,22 +433,22 @@
             resultsContainer.innerHTML = '<div class="loading">Učitavam jučerašnje podatke</div>';
 
             try {
-                const response = await fetch('/api/update-departures-sheet?yesterday=true');
+                const response = await fetch('/api/update-departures-sheet? yesterday=true');
                 const data = await response.json();
 
-                if (!data.success || !data.routes) {
+                if (! data.success || !data.routes) {
                     resultsContainer.innerHTML = '<div class="no-data">Greška pri učitavanju podataka</div>';
                     return;
                 }
 
-                const routeData = data.routes.find(route => 
-                    route.routeName.toUpperCase() === lineNumber
+                const routeData = data.routes. find(route => 
+                    route. routeName.toUpperCase() === lineNumber
                 );
 
                 if (!routeData) {
                     resultsContainer.innerHTML = `
                         <div class="no-data">
-                            Linija "${lineNumber}" nije pronađena u jučerašnjim podacima.<br>
+                            Linija "${lineNumber}" nije pronađena u jučerašnjim podacima. <br>
                             <small style="color: #999; margin-top: 10px; display: block;">
                                 Možda linija nije imala evidentirane polaske juče.
                             </small>
@@ -421,7 +470,7 @@
             
             let totalDepartures = 0;
             routeData.directions.forEach(dir => {
-                totalDepartures += dir.departures.length;
+                totalDepartures += dir.departures. length;
             });
 
             let html = `
@@ -429,13 +478,13 @@
                     <div class="route-header">
                         <div class="route-title">Linija ${routeData.routeName}</div>
                         <div class="route-stats">
-                            ${routeData.directions.length} ${routeData.directions.length === 1 ? 'smer' : 'smera'} • 
-                            ${totalDepartures} ${totalDepartures === 1 ? 'polazak' : totalDepartures < 5 ? 'polaska' : 'polazaka'}
+                            ${routeData. directions.length} ${routeData.directions.length === 1 ? 'smer' : 'smera'} • 
+                            ${totalDepartures} ${totalDepartures === 1 ?  'polazak' : totalDepartures < 5 ? 'polaska' : 'polazaka'}
                         </div>
                     </div>
             `;
 
-            routeData.directions.forEach(direction => {
+            routeData.directions. forEach(direction => {
                 html += `
                     <div class="direction-section">
                         <div class="direction-header">
@@ -445,12 +494,12 @@
                         <div class="departures-list">
                 `;
 
-                direction.departures.forEach(dep => {
+                direction. departures.forEach(dep => {
                     html += `
                         <div class="departure-item">
                             <span class="departure-time">${dep.startTime}</span>
                             <span class="departure-vehicle">${dep.vehicleLabel}</span>
-                            ${dep.timestamp ? `<span class="departure-timestamp">Viđeno: ${dep.timestamp}</span>` : ''}
+                            ${dep. timestamp ? `<span class="departure-timestamp">Viđeno: ${dep.timestamp}</span>` : ''}
                         </div>
                     `;
                 });
@@ -460,6 +509,126 @@
                     </div>
                 `;
             });
+
+            html += '</div>';
+            resultsContainer.innerHTML = html;
+        }
+
+        // Pretraga po vozilu (koristi isti endpoint sa yesterday=true, filtrira na klijentu)
+        async function searchVehicle() {
+            const searchInput = document.getElementById('vehicleSearch');
+            const vehicleNumber = searchInput.value.trim();
+            const resultsContainer = document.getElementById('resultsContainer');
+
+            if (!vehicleNumber) {
+                alert('Unesite broj vozila');
+                return;
+            }
+
+            resultsContainer.classList.add('show');
+            resultsContainer.innerHTML = '<div class="loading">Učitavam jučerašnje podatke</div>';
+
+            try {
+                const response = await fetch('/api/update-departures-sheet?yesterday=true');
+                const data = await response.json();
+
+                if (!data.success || !data.routes) {
+                    resultsContainer.innerHTML = '<div class="no-data">Greška pri učitavanju podataka</div>';
+                    return;
+                }
+
+                // Pronađi sve polaske za dato vozilo (substring match)
+                const vehicleDepartures = [];
+
+                data.routes. forEach(route => {
+                    route.directions.forEach(direction => {
+                        direction.departures.forEach(dep => {
+                            if (dep.vehicleLabel && dep.vehicleLabel.includes(vehicleNumber)) {
+                                vehicleDepartures.push({
+                                    linija: route.routeName,
+                                    smer: direction.directionName,
+                                    vreme: dep.startTime,
+                                    vozilo: dep.vehicleLabel,
+                                    timestamp: dep.timestamp || ''
+                                });
+                            }
+                        });
+                    });
+                });
+
+                if (vehicleDepartures.length === 0) {
+                    resultsContainer. innerHTML = `
+                        <div class="no-data">
+                            Vozilo "${vehicleNumber}" nije pronađeno u jučerašnjim podacima.<br>
+                            <small style="color: #999; margin-top: 10px; display: block;">
+                                Možda vozilo juče nije bilo u saobraćaju.
+                            </small>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Sortiraj po vremenu
+                vehicleDepartures.sort((a, b) => a.vreme. localeCompare(b.vreme));
+
+                displayVehicleResults(vehicleNumber, vehicleDepartures);
+
+            } catch (error) {
+                console. error('Greška:', error);
+                resultsContainer.innerHTML = '<div class="no-data">Greška pri učitavanju podataka</div>';
+            }
+        }
+
+        function displayVehicleResults(vehicleNumber, departures) {
+            const resultsContainer = document.getElementById('resultsContainer');
+            
+            // Grupiši po linijama za lepši prikaz
+            const groupedByLine = {};
+            departures. forEach(dep => {
+                if (!groupedByLine[dep.linija]) {
+                    groupedByLine[dep. linija] = [];
+                }
+                groupedByLine[dep.linija]. push(dep);
+            });
+
+            let html = `
+                <div class="route-section">
+                    <div class="route-header">
+                        <div class="route-title">Vozilo: ${vehicleNumber}</div>
+                        <div class="route-stats">
+                            ${Object.keys(groupedByLine).length} ${Object.keys(groupedByLine). length === 1 ? 'linija' : 'linija'} • 
+                            ${departures.length} ${departures.length === 1 ? 'polazak' : departures.length < 5 ? 'polaska' : 'polazaka'}
+                        </div>
+                    </div>
+            `;
+
+            for (const linija in groupedByLine) {
+                const lineDeps = groupedByLine[linija];
+                
+                html += `
+                    <div class="direction-section">
+                        <div class="direction-header">
+                            <div class="direction-title">Linija ${linija}</div>
+                            <div class="direction-count">${lineDeps.length}</div>
+                        </div>
+                        <div class="departures-list">
+                `;
+
+                lineDeps.forEach(dep => {
+                    html += `
+                        <div class="departure-item">
+                            <span class="departure-time">${dep.vreme}</span>
+                            <span class="departure-vehicle">→ ${dep.smer}</span>
+                            ${dep. timestamp ? `<span class="departure-timestamp">Viđeno: ${dep.timestamp}</span>` : ''}
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
 
             html += '</div>';
             resultsContainer.innerHTML = html;
