@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('🕐 Hourly check triggered at:', new Date(). toISOString());
+    console.log('🕐 Hourly check triggered at:', new Date().toISOString());
     
     // PROVERA: Da li treba resetovati sheet (svaki dan u 01:00)
     const now = new Date();
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     if (currentHour === 1 && currentMinute < 30) {
       console.log('🔄 Resetting departures sheet (scheduled at 01:00).. .');
       try {
-        const baseUrl = `https://${req.headers.host}`;
+        const baseUrl = `https://${req.headers. host}`;
         const resetResponse = await fetch(`${baseUrl}/api/reset-departures`, {
           method: 'GET',
         });
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
 
     const vehiclesData = await vehiclesResponse.json();
     
-    if (! vehiclesData || ! vehiclesData.vehicles || vehiclesData. vehicles.length === 0) {
+    if (! vehiclesData || !vehiclesData. vehicles || vehiclesData.vehicles.length === 0) {
       console.log('⚠️ No vehicles found');
       return res. status(200).send('SUCCESS - No vehicles to update');
     }
@@ -57,11 +57,11 @@ export default async function handler(req, res) {
     // KORAK 2: Učitaj stations i route names (potrebno za formatiranje)
     const [stationsResponse, routeNamesResponse] = await Promise.all([
       fetch(`${baseUrl}/api/stations`),
-      fetch(`${baseUrl}/route-mapping. json`)
+      fetch(`${baseUrl}/route-mapping.json`)
     ]);
 
     const stationsMap = await stationsResponse.json();
-    const routeNamesMap = await routeNamesResponse.json();
+    const routeNamesMap = await routeNamesResponse. json();
 
     // KORAK 3: Kreiraj vehicleDestinations mapu
     const vehicleDestinations = {};
@@ -72,7 +72,7 @@ export default async function handler(req, res) {
     }
 
     // KORAK 4: Formatiraj podatke za update-sheet
-    const formattedVehicles = vehiclesData. vehicles.map(vehicle => {
+    const formattedVehicles = vehiclesData.vehicles. map(vehicle => {
       const destId = vehicleDestinations[vehicle.id] || "Unknown";
       
       // Normalizuj stop ID
@@ -87,8 +87,8 @@ export default async function handler(req, res) {
       
       // Normalizuj route ID
       let normalizedRouteId = vehicle.routeId;
-      if (typeof vehicle.routeId === 'string') {
-        normalizedRouteId = parseInt(vehicle.routeId, 10). toString();
+      if (typeof vehicle. routeId === 'string') {
+        normalizedRouteId = parseInt(vehicle.routeId, 10).toString();
       }
       
       const routeDisplayName = routeNamesMap[normalizedRouteId] || normalizedRouteId;
@@ -123,24 +123,24 @@ export default async function handler(req, res) {
     
     console.log('✅ Hourly update completed:', result);
     
-   // KORAK 6: Ažuriraj Departures sheet direktno iz Baza sheet-a
-try {
-  const departuresResponse = await fetch(`${baseUrl}/api/update-departures-simple`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    }
-  });
+    // KORAK 6: Ažuriraj Departures sheet direktno iz Baza sheet-a
+    try {
+      const departuresResponse = await fetch(`${baseUrl}/api/update-departures-simple`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
 
-  if (departuresResponse.ok) {
-    const departuresResult = await departuresResponse.json();
-    console.log('✅ Departures sheet updated:', departuresResult);
-  } else {
-    console.log('⚠️ Departures sheet update failed');
-  }
-} catch (departuresError) {
-  console.error('⚠️ Departures sheet error:', departuresError.message);
-}
+      if (departuresResponse.ok) {
+        const departuresResult = await departuresResponse.json();
+        console.log('✅ Departures sheet updated:', departuresResult);
+      } else {
+        console.log('⚠️ Departures sheet update failed');
+      }
+    } catch (departuresError) {
+      console.error('⚠️ Departures sheet error:', departuresError.message);
+    }
     
     // Vrati odgovor sa ključnom rečju "SUCCESS" za UptimeRobot
     const timestamp = new Date().toLocaleString('sr-RS', { 
