@@ -47,21 +47,31 @@
             background: white;
             padding: 30px;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 20px rgba(0,0,0,0. 1);
             margin-bottom: 20px;
         }
 
         .search-box {
             display: flex;
-            gap: 15px;
+            gap: 30px;
             align-items: flex-end;
             flex-wrap: wrap;
             margin-bottom: 30px;
         }
 
-        .search-group {
+        .search-group-wrapper {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
             flex: 1;
-            min-width: 200px;
+            min-width: 300px;
+        }
+
+        .search-group-wrapper .search-group {
+            flex: 1;
+        }
+
+        .search-group {
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -97,11 +107,12 @@
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
+            white-space: nowrap;
         }
 
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(30, 60, 114, 0.4);
+            box-shadow: 0 6px 20px rgba(30, 60, 114, 0. 4);
         }
 
         button:active {
@@ -186,7 +197,7 @@
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             padding: 12px 18px;
-            transition: all 0.2s;
+            transition: all 0. 2s;
             display: flex;
             align-items: center;
             gap: 15px;
@@ -246,26 +257,33 @@
         }
 
         .loading::after {
-            content: '...';
+            content: '... ';
             animation: dots 1.5s steps(4, end) infinite;
         }
 
         @keyframes dots {
-            0%, 20% { content: '.'; }
-            40% { content: '..'; }
+            0%, 20% { content: '. '; }
+            40% { content: '.. '; }
             60%, 100% { content: '...'; }
         }
 
         @media (max-width: 768px) {
             .search-box {
                 flex-direction: column;
+                gap: 20px;
             }
 
-            .search-group {
+            .search-group-wrapper {
+                flex-direction: column;
+                width: 100%;
+                min-width: unset;
+            }
+
+            .search-group-wrapper .search-group {
                 width: 100%;
             }
 
-            button {
+            . search-group-wrapper button {
                 width: 100%;
             }
 
@@ -307,7 +325,7 @@
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: white;
             text-decoration: none;
-            font-size: 1.3em;
+            font-size: 1. 3em;
             font-weight: 600;
             border-radius: 8px;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
@@ -340,7 +358,7 @@
             animation: pulse 2s infinite;
         }
 
-        .btn-admin.has-pending:hover {
+        . btn-admin.has-pending:hover {
             background: #c0392b;
         }
     </style>
@@ -353,31 +371,34 @@
 
         <div class="search-container">
             <div class="search-box">
-                <div class="search-group">
-                    <label for="lineSearch">Broj linije:</label>
-                    <input 
-                        type="text" 
-                        id="lineSearch" 
-                        placeholder="Unesite broj linije (npr. 601)"
-                    >
+                <!-- Grupa za liniju -->
+                <div class="search-group-wrapper">
+                    <div class="search-group">
+                        <label for="lineSearch">Broj linije:</label>
+                        <input 
+                            type="text" 
+                            id="lineSearch" 
+                            placeholder="Unesite broj linije (npr. 601)"
+                        >
+                    </div>
+                    <button id="lineSearchBtn">Pretraži liniju</button>
                 </div>
 
-                <!-- Dodato: pretraga po vozilu -->
-                <div class="search-group">
-                    <label for="vehicleSearch">Ili broj vozila:</label>
-                    <input 
-                        type="text" 
-                        id="vehicleSearch" 
-                        placeholder="npr. P70618"
-                    >
+                <!-- Grupa za vozilo -->
+                <div class="search-group-wrapper">
+                    <div class="search-group">
+                        <label for="vehicleSearch">Broj vozila:</label>
+                        <input 
+                            type="text" 
+                            id="vehicleSearch" 
+                            placeholder="npr. P70618"
+                        >
+                    </div>
+                    <button id="vehicleSearchBtn">Pretraži vozilo</button>
                 </div>
-
-                <!-- Dugmad imaju ID-e umesto inline onclick -->
-                <button id="lineSearchBtn">Pretraži liniju</button>
-                <button id="vehicleSearchBtn">Pretraži vozilo</button>
             </div>
             <div class="button-container">
-            <a href="juce.html" class="btn">Jučešnji Podaci</a>
+                <a href="juce. html" class="btn">Jučešnji Podaci</a>
             </div>
         </div>
 
@@ -393,7 +414,7 @@
         // Prikači event listenere nakon DOMContentLoaded
         document.addEventListener('DOMContentLoaded', () => {
             const lineInput = document.getElementById('lineSearch');
-            const vehicleInput = document.getElementById('vehicleSearch');
+            const vehicleInput = document. getElementById('vehicleSearch');
             const lineBtn = document.getElementById('lineSearchBtn');
             const vehicleBtn = document.getElementById('vehicleSearchBtn');
 
@@ -404,7 +425,7 @@
             lineInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') searchLine();
             });
-            vehicleInput.addEventListener('keypress', (e) => {
+            vehicleInput. addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') searchVehicle();
             });
         });
@@ -412,10 +433,10 @@
         // Korišćenje istog API endpointa (GET /api/update-departures-sheet)
         async function searchLine() {
             const searchInput = document.getElementById('lineSearch');
-            const lineNumber = searchInput.value.trim().toUpperCase();
-            const resultsContainer = document.getElementById('resultsContainer');
+            const lineNumber = searchInput.value.trim(). toUpperCase();
+            const resultsContainer = document. getElementById('resultsContainer');
 
-            if (!lineNumber) {
+            if (! lineNumber) {
                 alert('Unesite broj linije');
                 return;
             }
@@ -427,19 +448,19 @@
                 const response = await fetch('/api/update-departures-sheet');
                 const data = await response.json();
 
-                if (!data.success || !data.routes) {
+                if (! data.success || !data.routes) {
                     resultsContainer.innerHTML = '<div class="no-data">Greška pri učitavanju podataka</div>';
                     return;
                 }
 
-                const routeData = data.routes.find(route =>
-                    route.routeName.toUpperCase() === lineNumber
+                const routeData = data.routes. find(route =>
+                    route. routeName.toUpperCase() === lineNumber
                 );
 
-                if (!routeData) {
+                if (! routeData) {
                     resultsContainer.innerHTML = `
                         <div class="no-data">
-                            Linija "${lineNumber}" nije pronađena u bazi.<br>
+                            Linija "${lineNumber}" nije pronađena u bazi. <br>
                             <small style="color: #999; margin-top: 10px; display: block;">
                                 Možda linija trenutno nema zabeleženih polazaka.
                             </small>
@@ -470,12 +491,12 @@
                         <div class="route-title">Linija ${routeData.routeName}</div>
                         <div class="route-stats">
                             ${routeData.directions.length} ${routeData.directions.length === 1 ? 'smer' : 'smera'} • 
-                            ${totalDepartures} ${totalDepartures === 1 ? 'polazak' : totalDepartures < 5 ? 'polaska' : 'polazaka'}
+                            ${totalDepartures} ${totalDepartures === 1 ?  'polazak' : totalDepartures < 5 ? 'polaska' : 'polazaka'}
                         </div>
                     </div>
             `;
 
-            routeData.directions.forEach(direction => {
+            routeData.directions. forEach(direction => {
                 html += `
                     <div class="direction-section">
                         <div class="direction-header">
@@ -485,7 +506,7 @@
                         <div class="departures-list">
                 `;
 
-                direction.departures.forEach(dep => {
+                direction. departures.forEach(dep => {
                     html += `
                         <div class="departure-item">
                             <span class="departure-time">${dep.startTime}</span>
@@ -501,7 +522,7 @@
             });
 
             html += '</div>';
-            resultsContainer.innerHTML = html;
+            resultsContainer. innerHTML = html;
         }
 
         // Pretraga po vozilu (koristi isti endpoint, filtrira na klijentu)
@@ -522,15 +543,15 @@
                 const response = await fetch('/api/update-departures-sheet');
                 const data = await response.json();
 
-                if (!data.success || !data.routes) {
-                    resultsContainer.innerHTML = '<div class="no-data">Greška pri učitavanju podataka</div>';
+                if (!data. success || !data. routes) {
+                    resultsContainer. innerHTML = '<div class="no-data">Greška pri učitavanju podataka</div>';
                     return;
                 }
 
                 // Pronađi sve polaske za dato vozilo (substring match, možeš promeniti na exact)
                 const vehicleDepartures = [];
 
-                data.routes.forEach(route => {
+                data.routes. forEach(route => {
                     route.directions.forEach(direction => {
                         direction.departures.forEach(dep => {
                             if (dep.vehicleLabel && dep.vehicleLabel.includes(vehicleNumber)) {
@@ -547,9 +568,9 @@
                 });
 
                 if (vehicleDepartures.length === 0) {
-                    resultsContainer.innerHTML = `
+                    resultsContainer. innerHTML = `
                         <div class="no-data">
-                            Vozilo "${vehicleNumber}" nije pronađeno u bazi. <br>
+                            Vozilo "${vehicleNumber}" nije pronađeno u bazi.  <br>
                             <small style="color: #999; margin-top: 10px; display: block;">
                                 Možda vozilo danas nije bilo u saobraćaju.
                             </small>
@@ -559,12 +580,12 @@
                 }
 
                 // Sortiraj po vremenu
-                vehicleDepartures.sort((a, b) => a.vreme.localeCompare(b.vreme));
+                vehicleDepartures.sort((a, b) => a.vreme. localeCompare(b.vreme));
 
                 displayVehicleResults(vehicleNumber, vehicleDepartures);
 
             } catch (error) {
-                console.error('Greška:', error);
+                console. error('Greška:', error);
                 resultsContainer.innerHTML = '<div class="no-data">Greška pri učitavanju podataka</div>';
             }
         }
@@ -575,7 +596,7 @@
             // Grupiši po linijama za lepši prikaz
             const groupedByLine = {};
             departures.forEach(dep => {
-                if (!groupedByLine[dep.linija]) {
+                if (!groupedByLine[dep. linija]) {
                     groupedByLine[dep.linija] = [];
                 }
                 groupedByLine[dep.linija].push(dep);
@@ -586,8 +607,8 @@
                     <div class="route-header">
                         <div class="route-title">Vozilo: ${vehicleNumber}</div>
                         <div class="route-stats">
-                            ${Object.keys(groupedByLine).length} ${Object.keys(groupedByLine).length === 1 ? 'linija' : 'linija'} • 
-                            ${departures.length} ${departures.length === 1 ? 'polazak' : departures.length < 5 ? 'polaska' : 'polazaka'}
+                            ${Object.keys(groupedByLine).length} ${Object.keys(groupedByLine). length === 1 ? 'linija' : 'linija'} • 
+                            ${departures. length} ${departures.length === 1 ? 'polazak' : departures.length < 5 ? 'polaska' : 'polazaka'}
                         </div>
                     </div>
             `;
@@ -620,7 +641,7 @@
             }
 
             html += '</div>';
-            resultsContainer.innerHTML = html;
+            resultsContainer. innerHTML = html;
         }
     </script>
 </body>
