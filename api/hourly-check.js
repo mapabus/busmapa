@@ -17,14 +17,14 @@ export default async function handler(req, res) {
     const currentMinute = belgradTime.getMinutes();
     
     if (currentHour === 1 && currentMinute < 30) {
-      console.log('🔄 Resetting departures sheet (scheduled at 01:00).. .');
+      console.log('🔄 Resetting departures sheet (scheduled at 01:00)...');
       try {
-        const baseUrl = `https://${req.headers. host}`;
+        const baseUrl = `https://${req.headers.host}`;
         const resetResponse = await fetch(`${baseUrl}/api/reset-departures`, {
           method: 'GET',
         });
         
-        if (resetResponse. ok) {
+        if (resetResponse.ok) {
           console.log('✅ Departures sheet reset successful');
         } else {
           console.log('⚠️ Departures sheet reset failed');
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     }
     
     // KORAK 1: Preuzmi podatke o vozilima
-    const baseUrl = `https://${req.headers. host}`;
+    const baseUrl = `https://${req.headers.host}`;
     const vehiclesResponse = await fetch(`${baseUrl}/api/vehicles`, {
       method: 'GET',
       headers: {
@@ -49,9 +49,9 @@ export default async function handler(req, res) {
 
     const vehiclesData = await vehiclesResponse.json();
     
-    if (! vehiclesData || !vehiclesData. vehicles || vehiclesData.vehicles.length === 0) {
+    if (! vehiclesData || !vehiclesData.vehicles || vehiclesData.vehicles.length === 0) {
       console.log('⚠️ No vehicles found');
-      return res. status(200).send('SUCCESS - No vehicles to update');
+      return res.status(200).send('SUCCESS - No vehicles to update');
     }
 
     // KORAK 2: Učitaj stations i route names (potrebno za formatiranje)
@@ -61,25 +61,25 @@ export default async function handler(req, res) {
     ]);
 
     const stationsMap = await stationsResponse.json();
-    const routeNamesMap = await routeNamesResponse. json();
+    const routeNamesMap = await routeNamesResponse.json();
 
     // KORAK 3: Kreiraj vehicleDestinations mapu
     const vehicleDestinations = {};
-    if (vehiclesData. tripUpdates) {
+    if (vehiclesData.tripUpdates) {
       vehiclesData.tripUpdates.forEach(update => {
         vehicleDestinations[update.vehicleId] = update.destination;
       });
     }
 
     // KORAK 4: Formatiraj podatke za update-sheet
-    const formattedVehicles = vehiclesData.vehicles. map(vehicle => {
+    const formattedVehicles = vehiclesData.vehicles.map(vehicle => {
       const destId = vehicleDestinations[vehicle.id] || "Unknown";
       
       // Normalizuj stop ID
       let normalizedId = destId;
       if (typeof destId === 'string' && destId.length === 5 && destId.startsWith('2')) {
         normalizedId = destId.substring(1);
-        normalizedId = parseInt(normalizedId, 10). toString();
+        normalizedId = parseInt(normalizedId, 10).toString();
       }
       
       const station = stationsMap[normalizedId];
@@ -87,7 +87,7 @@ export default async function handler(req, res) {
       
       // Normalizuj route ID
       let normalizedRouteId = vehicle.routeId;
-      if (typeof vehicle. routeId === 'string') {
+      if (typeof vehicle.routeId === 'string') {
         normalizedRouteId = parseInt(vehicle.routeId, 10).toString();
       }
       
@@ -109,17 +109,17 @@ export default async function handler(req, res) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON. stringify({ 
+      body: JSON.stringify({ 
         vehicles: formattedVehicles 
       })
     });
 
     if (!updateResponse.ok) {
-      const errorText = await updateResponse. text();
+      const errorText = await updateResponse.text();
       throw new Error(`Update failed with status ${updateResponse.status}: ${errorText}`);
     }
 
-    const result = await updateResponse. json();
+    const result = await updateResponse.json();
     
     console.log('✅ Hourly update completed:', result);
     
@@ -164,7 +164,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('❌ Hourly check error:', error);
     
-    const timestamp = new Date(). toLocaleString('sr-RS', { 
+    const timestamp = new Date().toLocaleString('sr-RS', { 
       timeZone: 'Europe/Belgrade',
       day: '2-digit',
       month: '2-digit',
@@ -175,7 +175,7 @@ export default async function handler(req, res) {
     });
     
     // Vrati ERROR da UptimeRobot zna da nešto nije u redu
-    return res. status(500).send(
+    return res.status(500).send(
       `ERROR - Failed at ${timestamp}: ${error.message}`
     );
   }
