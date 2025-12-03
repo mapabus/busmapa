@@ -12,9 +12,15 @@ export default async function handler(req, res) {
     
     // PROVERA: Da li treba resetovati sheet (svaki dan u 01:00)
     const now = new Date();
-    const belgradTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
-    const currentHour = belgradTime.getHours();
-    const currentMinute = belgradTime.getMinutes();
+const currentHour = parseInt(now.toLocaleString('en-US', { 
+  timeZone: 'Europe/Belgrade', 
+  hour: 'numeric', 
+  hour12: false 
+}));
+const currentMinute = parseInt(now.toLocaleString('en-US', { 
+  timeZone: 'Europe/Belgrade', 
+  minute: 'numeric' 
+}));
     
     if (currentHour === 1 && currentMinute < 30) {
       console.log('🔄 Resetting departures sheet (scheduled at 01:00)...');
