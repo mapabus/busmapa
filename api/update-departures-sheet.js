@@ -164,16 +164,23 @@ export default async function handler(req, res) {
       }
       
       const polazakParts = polazak.split(':');
-      const polazakHour = parseInt(polazakParts[0]) || 0;
-      const polazakMinute = parseInt(polazakParts[1]) || 0;
-      const polazakTimeInMinutes = polazakHour * 60 + polazakMinute;
-      
-      if (polazakTimeInMinutes > currentTimeInMinutes) {
-        skippedFuture++;
-        return;
-      }
-      
-      processedToday++;
+const polazakHour = parseInt(polazakParts[0]) || 0;
+const polazakMinute = parseInt(polazakParts[1]) || 0;
+const polazakTimeInMinutes = polazakHour * 60 + polazakMinute;
+
+// Specijalna logika za noćne linije (nakon ponoći)
+// Ako je trenutno vreme između 00:00 i 04:00, a polazak je posle 22:00,
+// to je noćna linija koja je počela juče i treba je uključiti
+const isNightTime = currentHour >= 0 && currentHour < 1;
+const isLateEvening = polazakHour >= 22;
+
+if (isNightTime && isLateEvening) {
+  // Ovo je noćna linija, dozvoli je
+  processedToday++;
+} else if (polazakTimeInMinutes > currentTimeInMinutes) {
+  skippedFuture++;
+  return;
+}
 
       if (!routeMap[linija]) {
         routeMap[linija] = {};
