@@ -1,0 +1,953 @@
+<! DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Vožnje - Banovo Brdo ↔ Barajevo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #1e3c72;
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .lines-badges {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .line-badge {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .search-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-box label {
+            font-weight: 600;
+            color: #1e3c72;
+            font-size: 16px;
+        }
+
+        .search-box input {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #1e3c72;
+            box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
+        }
+
+        .search-box button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .search-box button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 60, 114, 0.4);
+        }
+
+        .clear-btn {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%) !important;
+        }
+
+        .search-results {
+            display: none;
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 2px solid #e3f2fd;
+            border-radius: 8px;
+        }
+
+        .search-results.show {
+            display: block;
+        }
+
+        .search-result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .search-result-item:hover {
+            background: #e3f2fd;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-vehicle {
+            font-weight: 600;
+            color: #1e3c72;
+        }
+
+        .result-count {
+            background: #1e3c72;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+        }
+
+        .directions-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .directions-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .direction-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .direction-header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .direction-header.reverse {
+            background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
+        }
+
+        .direction-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .direction-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .schedule-grid {
+            padding: 15px;
+        }
+
+        .hour-row {
+            display: flex;
+            align-items: flex-start;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 10px 0;
+        }
+
+        .hour-row:last-child {
+            border-bottom: none;
+        }
+
+        .hour-cell {
+            width: 50px;
+            font-size: 22px;
+            font-weight: bold;
+            color: #1e3c72;
+            text-align: center;
+            padding-top: 5px;
+            flex-shrink: 0;
+        }
+
+        .minutes-cell {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .minute-badge {
+            background: #e3f2fd;
+            color: #1e3c72;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 50px;
+        }
+
+        .minute-badge:hover {
+            background: #1e3c72;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .minute-badge .minute {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .minute-badge .line-tag {
+            font-size: 10px;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+
+        .minute-badge:hover .line-tag {
+            opacity: 1;
+        }
+
+        .minute-badge.highlighted {
+            background: #ffc107;
+            color: #333;
+            animation: pulse 1.5s infinite;
+        }
+
+        .minute-badge.highlighted .line-tag {
+            color: #333;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+            50% { box-shadow: 0 0 0 8px rgba(255, 193, 7, 0); }
+        }
+
+        /* Boje za različite linije */
+        .minute-badge.line-560 { border-left: 4px solid #2196F3; }
+        .minute-badge.line-560a { border-left: 4px solid #03A9F4; }
+        .minute-badge.line-560e { border-left: 4px solid #00BCD4; }
+        .minute-badge.line-586 { border-left: 4px solid #4CAF50; }
+        .minute-badge.line-591 { border-left: 4px solid #FF9800; }
+        .minute-badge.line-592 { border-left: 4px solid #FF5722; }
+        .minute-badge.line-593 { border-left: 4px solid #9C27B0; }
+        .minute-badge.line-593a { border-left: 4px solid #E91E63; }
+
+        /* Tooltip / Oblačić */
+        .tooltip {
+            position: absolute;
+            bottom: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e3c72;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            white-space: nowrap;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 8px solid transparent;
+            border-top-color: #1e3c72;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .tooltip-vehicle {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .tooltip-line {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 3px;
+        }
+
+        .tooltip-destination {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-top: 3px;
+        }
+
+        .legend {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        .legend-title {
+            font-weight: 600;
+            color: #1e3c72;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .legend-items {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .legend-color.c-560 { background: #2196F3; }
+        .legend-color.c-560a { background: #03A9F4; }
+        .legend-color.c-560e { background: #00BCD4; }
+        .legend-color.c-586 { background: #4CAF50; }
+        .legend-color.c-591 { background: #FF9800; }
+        .legend-color.c-592 { background: #FF5722; }
+        .legend-color.c-593 { background: #9C27B0; }
+        .legend-color.c-593a { background: #E91E63; }
+        .legend-color.c-highlight { background: #ffc107; }
+
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1e3c72;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .hour-cell {
+                width: 40px;
+                font-size: 18px;
+            }
+            
+            .minute-badge {
+                padding: 6px 10px;
+                min-width: 45px;
+            }
+            
+            .minute-badge .minute {
+                font-size: 14px;
+            }
+            
+            .minute-badge .line-tag {
+                font-size: 9px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Red Vožnje</h1>
+            <p class="subtitle">Banovo Brdo ↔ Barajevo / Obrenovac • Sve linije</p>
+            <div class="lines-badges">
+                <span class="line-badge">560</span>
+                <span class="line-badge">560a</span>
+                <span class="line-badge">560e</span>
+                <span class="line-badge">586</span>
+                <span class="line-badge">591</span>
+                <span class="line-badge">592</span>
+                <span class="line-badge">593</span>
+                <span class="line-badge">593a</span>
+            </div>
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-number" id="totalDepartures">0</div>
+                    <div class="stat-label">Ukupno polazaka</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="totalVehicles">0</div>
+                    <div class="stat-label">Vozila</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">8</div>
+                    <div class="stat-label">Linija</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="search-container">
+            <div class="search-box">
+                <label for="vehicleSearch">🔍 Pretraga vozila:</label>
+                <input type="text" id="vehicleSearch" placeholder="Unesite broj vozila (npr.P76445)">
+                <button onclick="searchVehicle()">Pretraži</button>
+                <button class="clear-btn" onclick="clearSearch()">Obriši</button>
+            </div>
+            <div id="searchResults" class="search-results"></div>
+        </div>
+
+        <div class="directions-container">
+            <div class="direction-card">
+                <div class="direction-header">
+                    <div class="direction-title">Banovo Brdo → Barajevo / Obrenovac</div>
+                    <div class="direction-subtitle">Polasci sa Banovog Brda</div>
+                </div>
+                <div class="schedule-grid" id="schedule-banovo">
+                </div>
+            </div>
+
+            <div class="direction-card">
+                <div class="direction-header reverse">
+                    <div class="direction-title">Barajevo / Obrenovac → Banovo Brdo</div>
+                    <div class="direction-subtitle">Polasci ka Banovom Brdu</div>
+                </div>
+                <div class="schedule-grid" id="schedule-barajevo">
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-title">Legenda linija</div>
+            <div class="legend-items">
+                <div class="legend-item"><div class="legend-color c-560"></div><span>560 → Barajevo</span></div>
+                <div class="legend-item"><div class="legend-color c-560a"></div><span>560a → Barajevo</span></div>
+                <div class="legend-item"><div class="legend-color c-560e"></div><span>560e → Barajevo (ekspres)</span></div>
+                <div class="legend-item"><div class="legend-color c-586"></div><span>586 → Termoelektrana</span></div>
+                <div class="legend-item"><div class="legend-color c-591"></div><span>591 → Taraiš</span></div>
+                <div class="legend-item"><div class="legend-color c-592"></div><span>592 → Draževac</span></div>
+                <div class="legend-item"><div class="legend-color c-593"></div><span>593</span></div>
+                <div class="legend-item"><div class="legend-color c-593a"></div><span>593a → Rašića kraj</span></div>
+                <div class="legend-item"><div class="legend-color c-highlight"></div><span>Pretraženo vozilo</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Podaci izvučeni iz 56X.html, 586.html i 59X.html fajlova
+        const scheduleData = {
+            // Banovo Brdo → Barajevo/Obrenovac (smer KA destinacijama)
+            banovoToBarajevo: [
+                // ============ 560 - Barajevo AS ============
+                { time: "04:30", vehicle: "P76441", line: "560", destination: "Barajevo AS" },
+                { time: "04:40", vehicle: "P76445", line: "560", destination: "Barajevo AS" },
+                { time: "04:50", vehicle: "P58408", line: "560", destination: "Barajevo AS" },
+                { time: "05:00", vehicle: "P77253", line: "560", destination: "Barajevo AS" },
+                { time: "05:10", vehicle: "P70407", line: "560", destination: "Barajevo AS" },
+                { time: "05:20", vehicle: "P76449", line: "560", destination: "Barajevo AS" },
+                { time: "05:30", vehicle: "P70410", line: "560", destination: "Barajevo AS" },
+                { time: "05:40", vehicle: "P58503", line: "560", destination: "Barajevo AS" },
+                { time: "06:00", vehicle: "P76444", line: "560", destination: "Barajevo AS" },
+                { time: "06:05", vehicle: "P76441", line: "560", destination: "Barajevo AS" },
+                { time: "06:15", vehicle: "P58408", line: "560", destination: "Barajevo AS" },
+                { time: "06:20", vehicle: "P76445", line: "560", destination: "Barajevo AS" },
+                { time: "06:30", vehicle: "P70407", line: "560", destination: "Barajevo AS" },
+                { time: "06:40", vehicle: "P77253", line: "560", destination: "Barajevo AS" },
+                { time: "07:10", vehicle: "P76447", line: "560", destination: "Barajevo AS" },
+                { time: "07:20", vehicle: "P58503", line: "560", destination: "Barajevo AS" },
+                { time: "07:25", vehicle: "P70410", line: "560", destination: "Barajevo AS" },
+                { time: "07:40", vehicle: "P76444", line: "560", destination: "Barajevo AS" },
+                { time: "07:55", vehicle: "P58408", line: "560", destination: "Barajevo AS" },
+                { time: "08:00", vehicle: "P76445", line: "560", destination: "Barajevo AS" },
+                { time: "08:20", vehicle: "P77253", line: "560", destination: "Barajevo AS" },
+                { time: "08:30", vehicle: "P70412", line: "560", destination: "Barajevo AS" },
+                { time: "08:40", vehicle: "P76449", line: "560", destination: "Barajevo AS" },
+                { time: "08:50", vehicle: "P76433", line: "560", destination: "Barajevo AS" },
+                { time: "09:00", vehicle: "P76431", line: "560", destination: "Barajevo AS" },
+                { time: "09:25", vehicle: "P70410", line: "560", destination: "Barajevo AS" },
+                { time: "09:40", vehicle: "P76447", line: "560", destination: "Barajevo AS" },
+                { time: "10:00", vehicle: "P70407", line: "560", destination: "Barajevo AS" },
+                { time: "10:10", vehicle: "P58408", line: "560", destination: "Barajevo AS" },
+                { time: "10:20", vehicle: "P76441", line: "560", destination: "Barajevo AS" },
+                { time: "10:40", vehicle: "P76431", line: "560", destination: "Barajevo AS" },
+                { time: "10:55", vehicle: "P70410", line: "560", destination: "Barajevo AS" },
+                { time: "11:10", vehicle: "P76449", line: "560", destination: "Barajevo AS" },
+                { time: "11:40", vehicle: "P70407", line: "560", destination: "Barajevo AS" },
+                { time: "11:40", vehicle: "P76441", line: "560", destination: "Barajevo AS" },
+                { time: "11:50", vehicle: "P58408", line: "560", destination: "Barajevo AS" },
+                { time: "12:10", vehicle: "P76444", line: "560", destination: "Barajevo AS" },
+                { time: "12:30", vehicle: "P76433", line: "560", destination: "Barajevo AS" },
+                { time: "12:40", vehicle: "P70410", line: "560", destination: "Barajevo AS" },
+                { time: "13:00", vehicle: "P76447", line: "560", destination: "Barajevo AS" },
+                { time: "13:10", vehicle: "P76441", line: "560", destination: "Barajevo AS" },
+                { time: "13:30", vehicle: "P76445", line: "560", destination: "Barajevo AS" },
+                { time: "13:40", vehicle: "P76449", line: "560", destination: "Barajevo AS" },
+                { time: "13:50", vehicle: "P70407", line: "560", destination: "Barajevo AS" },
+                { time: "14:10", vehicle: "P76444", line: "560", destination: "Barajevo AS" },
+                { time: "14:15", vehicle: "P70410", line: "560", destination: "Barajevo AS" },
+                { time: "14:20", vehicle: "P76434", line: "560", destination: "Barajevo AS" },
+                { time: "14:30", vehicle: "P76431", line: "560", destination: "Barajevo AS" },
+                { time: "14:50", vehicle: "P76445", line: "560", destination: "Barajevo AS" },
+                { time: "15:00", vehicle: "P70422", line: "560", destination: "Barajevo AS" },
+                { time: "15:10", vehicle: "P76441", line: "560", destination: "Barajevo AS" },
+                { time: "15:15", vehicle: "P58408", line: "560", destination: "Barajevo AS" },
+                { time: "15:20", vehicle: "P70407", line: "560", destination: "Barajevo AS" },
+                { time: "15:30", vehicle: "P76444", line: "560", destination: "Barajevo AS" },
+                { time: "15:50", vehicle: "P76434", line: "560", destination: "Barajevo AS" },
+                { time: "16:10", vehicle: "P70410", line: "560", destination: "Barajevo AS" },
+                { time: "16:20", vehicle: "P76445", line: "560", destination: "Barajevo AS" },
+                { time: "16:40", vehicle: "P76431", line: "560", destination: "Barajevo AS" },
+                { time: "17:30", vehicle: "P76434", line: "560", destination: "Barajevo AS" },
+                { time: "17:50", vehicle: "P76434", line: "560", destination: "Barajevo AS" },
+                { time: "18:00", vehicle: "P70410", line: "560", destination: "Barajevo AS" },
+                { time: "18:10", vehicle: "P76431", line: "560", destination: "Barajevo AS" },
+                { time: "18:30", vehicle: "P76441", line: "560", destination: "Barajevo AS" },
+                { time: "18:30", vehicle: "P58503", line: "560", destination: "Barajevo AS" },
+                { time: "18:55", vehicle: "P70413", line: "560", destination: "Barajevo AS" },
+                { time: "19:40", vehicle: "P70422", line: "560", destination: "Barajevo AS" },
+                { time: "19:50", vehicle: "P70410", line: "560", destination: "Barajevo AS" },
+                { time: "20:00", vehicle: "P76444", line: "560", destination: "Barajevo AS" },
+                { time: "20:05", vehicle: "P58232", line: "560", destination: "Barajevo AS" },
+                { time: "20:15", vehicle: "P76431", line: "560", destination: "Barajevo AS" },
+                { time: "20:30", vehicle: "P70413", line: "560", destination: "Barajevo AS" },
+
+                // ============ 560a - Barajevo AS ============
+                { time: "07:00", vehicle: "P76449", line: "560a", destination: "Barajevo AS" },
+                { time: "12:45", vehicle: "P76431", line: "560a", destination: "Barajevo AS" },
+                { time: "12:45", vehicle: "P58408", line: "560a", destination: "Barajevo AS" },
+
+                // ============ 560e - Barajevo AS (ekspres) ============
+                { time: "07:15", vehicle: "P76431", line: "560e", destination: "Barajevo AS" },
+                { time: "15:25", vehicle: "P76449", line: "560e", destination: "Barajevo AS" },
+
+                // ============ 586 - Termoelektrana ============
+                { time: "05:00", vehicle: "P71210", line: "586", destination: "Termoelektrana" },
+                { time: "12:00", vehicle: "P71210", line: "586", destination: "Termoelektrana" },
+                { time: "14:00", vehicle: "P71210", line: "586", destination: "Termoelektrana" },
+                { time: "16:00", vehicle: "P71210", line: "586", destination: "Termoelektrana" },
+
+                // ============ 591 - Taraiš okretnica ============
+                { time: "05:00", vehicle: "P70409", line: "591", destination: "Taraiš" },
+                { time: "05:30", vehicle: "P76438", line: "591", destination: "Taraiš" },
+                { time: "06:30", vehicle: "P79443", line: "591", destination: "Taraiš" },
+                { time: "09:00", vehicle: "P79443", line: "591", destination: "Taraiš" },
+                { time: "10:00", vehicle: "P71210", line: "591", destination: "Taraiš" },
+                { time: "11:00", vehicle: "P70412", line: "591", destination: "Taraiš" },
+                { time: "14:00", vehicle: "P70412", line: "591", destination: "Taraiš" },
+                { time: "14:30", vehicle: "P70409", line: "591", destination: "Taraiš" },
+                { time: "15:00", vehicle: "P76428", line: "591", destination: "Taraiš" },
+                { time: "16:00", vehicle: "P70412", line: "591", destination: "Taraiš" },
+                { time: "17:00", vehicle: "P76428", line: "591", destination: "Taraiš" },
+                { time: "18:00", vehicle: "P76438", line: "591", destination: "Taraiš" },
+                { time: "19:30", vehicle: "P70409", line: "591", destination: "Taraiš" },
+                { time: "20:00", vehicle: "P76428", line: "591", destination: "Taraiš" },
+
+                // ============ 592 - Draževac okretnica ============
+                { time: "07:00", vehicle: "P71210", line: "592", destination: "Draževac" },
+                { time: "08:30", vehicle: "P70409", line: "592", destination: "Draževac" },
+                { time: "10:30", vehicle: "P76438", line: "592", destination: "Draževac" },
+                { time: "13:30", vehicle: "P76438", line: "592", destination: "Draževac" },
+                { time: "15:30", vehicle: "P76438", line: "592", destination: "Draževac" },
+                { time: "19:00", vehicle: "P70412", line: "592", destination: "Draževac" },
+                { time: "20:00", vehicle: "P76438", line: "592", destination: "Draževac" },
+
+                // ============ 593a - Rašića kraj ============
+                { time: "06:00", vehicle: "P70412", line: "593a", destination: "Rašića kraj" }
+            ],
+
+            // Barajevo/Obrenovac → Banovo Brdo (smer KA Banovom Brdu)
+            barajevoToBanovo: [
+                // ============ 560 - Banovo Brdo ============
+                { time: "04:00", vehicle: "P76445", line: "560", destination: "Banovo Brdo" },
+                { time: "04:10", vehicle: "P58408", line: "560", destination: "Banovo Brdo" },
+                { time: "04:20", vehicle: "P77253", line: "560", destination: "Banovo Brdo" },
+                { time: "04:40", vehicle: "P76449", line: "560", destination: "Banovo Brdo" },
+                { time: "05:00", vehicle: "P58503", line: "560", destination: "Banovo Brdo" },
+                { time: "05:20", vehicle: "P76444", line: "560", destination: "Banovo Brdo" },
+                { time: "05:30", vehicle: "P58408", line: "560", destination: "Banovo Brdo" },
+                { time: "05:40", vehicle: "P76445", line: "560", destination: "Banovo Brdo" },
+                { time: "05:50", vehicle: "P70407", line: "560", destination: "Banovo Brdo" },
+                { time: "06:00", vehicle: "P77253", line: "560", destination: "Banovo Brdo" },
+                { time: "06:20", vehicle: "P76449", line: "560", destination: "Banovo Brdo" },
+                { time: "06:30", vehicle: "P70410", line: "560", destination: "Banovo Brdo" },
+                { time: "06:40", vehicle: "P58503", line: "560", destination: "Banovo Brdo" },
+                { time: "07:00", vehicle: "P76444", line: "560", destination: "Banovo Brdo" },
+                { time: "07:05", vehicle: "P58408", line: "560", destination: "Banovo Brdo" },
+                { time: "07:10", vehicle: "P76441", line: "560", destination: "Banovo Brdo" },
+                { time: "07:20", vehicle: "P76445", line: "560", destination: "Banovo Brdo" },
+                { time: "07:30", vehicle: "P77253", line: "560", destination: "Banovo Brdo" },
+                { time: "07:40", vehicle: "P70407", line: "560", destination: "Banovo Brdo" },
+                { time: "07:50", vehicle: "P76433", line: "560", destination: "Banovo Brdo" },
+                { time: "08:00", vehicle: "P76449", line: "560", destination: "Banovo Brdo" },
+                { time: "08:15", vehicle: "P70410", line: "560", destination: "Banovo Brdo" },
+                { time: "08:30", vehicle: "P76431", line: "560", destination: "Banovo Brdo" },
+                { time: "09:00", vehicle: "P76447", line: "560", destination: "Banovo Brdo" },
+                { time: "09:15", vehicle: "P70412", line: "560", destination: "Banovo Brdo" },
+                { time: "09:30", vehicle: "P58408", line: "560", destination: "Banovo Brdo" },
+                { time: "10:00", vehicle: "P76431", line: "560", destination: "Banovo Brdo" },
+                { time: "10:10", vehicle: "P70410", line: "560", destination: "Banovo Brdo" },
+                { time: "10:20", vehicle: "P76449", line: "560", destination: "Banovo Brdo" },
+                { time: "10:40", vehicle: "P70407", line: "560", destination: "Banovo Brdo" },
+                { time: "11:00", vehicle: "P76441", line: "560", destination: "Banovo Brdo" },
+                { time: "11:10", vehicle: "P58408", line: "560", destination: "Banovo Brdo" },
+                { time: "11:30", vehicle: "P76444", line: "560", destination: "Banovo Brdo" },
+                { time: "11:40", vehicle: "P76433", line: "560", destination: "Banovo Brdo" },
+                { time: "11:50", vehicle: "P76447", line: "560", destination: "Banovo Brdo" },
+                { time: "12:00", vehicle: "P70410", line: "560", destination: "Banovo Brdo" },
+                { time: "12:05", vehicle: "P76431", line: "560", destination: "Banovo Brdo" },
+                { time: "12:20", vehicle: "P76441", line: "560", destination: "Banovo Brdo" },
+                { time: "12:30", vehicle: "P70407", line: "560", destination: "Banovo Brdo" },
+                { time: "12:50", vehicle: "P76445", line: "560", destination: "Banovo Brdo" },
+                { time: "13:00", vehicle: "P76449", line: "560", destination: "Banovo Brdo" },
+                { time: "13:10", vehicle: "P76444", line: "560", destination: "Banovo Brdo" },
+                { time: "13:20", vehicle: "P70410", line: "560", destination: "Banovo Brdo" },
+                { time: "13:40", vehicle: "P76431", line: "560", destination: "Banovo Brdo" },
+                { time: "14:10", vehicle: "P70422", line: "560", destination: "Banovo Brdo" },
+                { time: "14:10", vehicle: "P76445", line: "560", destination: "Banovo Brdo" },
+                { time: "14:30", vehicle: "P58408", line: "560", destination: "Banovo Brdo" },
+                { time: "14:40", vehicle: "P70407", line: "560", destination: "Banovo Brdo" },
+                { time: "14:50", vehicle: "P76444", line: "560", destination: "Banovo Brdo" },
+                { time: "15:10", vehicle: "P76434", line: "560", destination: "Banovo Brdo" },
+                { time: "15:20", vehicle: "P70410", line: "560", destination: "Banovo Brdo" },
+                { time: "15:30", vehicle: "P76445", line: "560", destination: "Banovo Brdo" },
+                { time: "15:50", vehicle: "P76431", line: "560", destination: "Banovo Brdo" },
+                { time: "16:00", vehicle: "P58408", line: "560", destination: "Banovo Brdo" },
+                { time: "16:20", vehicle: "P70422", line: "560", destination: "Banovo Brdo" },
+                { time: "16:40", vehicle: "P70407", line: "560", destination: "Banovo Brdo" },
+                { time: "17:00", vehicle: "P58408", line: "560", destination: "Banovo Brdo" },
+                { time: "17:00", vehicle: "P76434", line: "560", destination: "Banovo Brdo" },
+                { time: "17:10", vehicle: "P70410", line: "560", destination: "Banovo Brdo" },
+                { time: "17:10", vehicle: "P70422", line: "560", destination: "Banovo Brdo" },
+                { time: "17:20", vehicle: "P76431", line: "560", destination: "Banovo Brdo" },
+                { time: "17:30", vehicle: "P70407", line: "560", destination: "Banovo Brdo" },
+                { time: "17:30", vehicle: "P76441", line: "560", destination: "Banovo Brdo" },
+                { time: "17:55", vehicle: "P70413", line: "560", destination: "Banovo Brdo" },
+                { time: "17:55", vehicle: "P58503", line: "560", destination: "Banovo Brdo" },
+                { time: "18:40", vehicle: "P70422", line: "560", destination: "Banovo Brdo" },
+                { time: "18:50", vehicle: "P70410", line: "560", destination: "Banovo Brdo" },
+                { time: "19:00", vehicle: "P76444", line: "560", destination: "Banovo Brdo" },
+                { time: "19:20", vehicle: "P58232", line: "560", destination: "Banovo Brdo" },
+                { time: "19:30", vehicle: "P76441", line: "560", destination: "Banovo Brdo" },
+                { time: "19:50", vehicle: "P70413", line: "560", destination: "Banovo Brdo" },
+                { time: "20:20", vehicle: "P70422", line: "560", destination: "Banovo Brdo" },
+                { time: "20:35", vehicle: "P70410", line: "560", destination: "Banovo Brdo" },
+
+                // ============ 560a - Banovo Brdo ============
+                { time: "13:30", vehicle: "P76434", line: "560a", destination: "Banovo Brdo" },
+                { time: "19:10", vehicle: "P76431", line: "560a", destination: "Banovo Brdo" },
+
+                // ============ 560e - BAS (ekspres) ============
+                { time: "06:15", vehicle: "P76431", line: "560e", destination: "BAS" },
+                { time: "14:20", vehicle: "P76449", line: "560e", destination: "BAS" },
+
+                // ============ 586 - Banovo Brdo ============
+                { time: "06:00", vehicle: "P71210", line: "586", destination: "Banovo Brdo" },
+                { time: "13:00", vehicle: "P71210", line: "586", destination: "Banovo Brdo" },
+                { time: "15:00", vehicle: "P71210", line: "586", destination: "Banovo Brdo" },
+                { time: "17:00", vehicle: "P71210", line: "586", destination: "Banovo Brdo" },
+
+                // ============ 591 - Banovo Brdo ============
+                { time: "04:20", vehicle: "P70409", line: "591", destination: "Banovo Brdo" },
+                { time: "05:00", vehicle: "P70412", line: "591", destination: "Banovo Brdo" },
+                { time: "05:30", vehicle: "P79443", line: "591", destination: "Banovo Brdo" },
+                { time: "06:00", vehicle: "P70409", line: "591", destination: "Banovo Brdo" },
+                { time: "06:30", vehicle: "P76438", line: "591", destination: "Banovo Brdo" },
+                { time: "07:30", vehicle: "P79443", line: "591", destination: "Banovo Brdo" },
+                { time: "10:00", vehicle: "P79443", line: "591", destination: "Banovo Brdo" },
+                { time: "11:00", vehicle: "P71210", line: "591", destination: "Banovo Brdo" },
+                { time: "12:15", vehicle: "P70412", line: "591", destination: "Banovo Brdo" },
+                { time: "13:00", vehicle: "P70409", line: "591", destination: "Banovo Brdo" },
+                { time: "15:00", vehicle: "P70412", line: "591", destination: "Banovo Brdo" },
+                { time: "15:30", vehicle: "P70409", line: "591", destination: "Banovo Brdo" },
+                { time: "16:00", vehicle: "P76428", line: "591", destination: "Banovo Brdo" },
+                { time: "17:00", vehicle: "P70412", line: "591", destination: "Banovo Brdo" },
+                { time: "18:00", vehicle: "P76428", line: "591", destination: "Banovo Brdo" },
+                { time: "19:00", vehicle: "P76438", line: "591", destination: "Banovo Brdo" },
+
+                // ============ 592 - Banovo Brdo ============
+                { time: "04:55", vehicle: "P76438", line: "592", destination: "Banovo Brdo" },
+                { time: "08:00", vehicle: "P71210", line: "592", destination: "Banovo Brdo" },
+                { time: "11:30", vehicle: "P76438", line: "592", destination: "Banovo Brdo" },
+                { time: "14:30", vehicle: "P76438", line: "592", destination: "Banovo Brdo" },
+                { time: "16:30", vehicle: "P76438", line: "592", destination: "Banovo Brdo" },
+                { time: "20:00", vehicle: "P70412", line: "592", destination: "Banovo Brdo" },
+
+                // ============ 593 - Banovo Brdo ============
+                { time: "17:30", vehicle: "P70409", line: "593", destination: "Banovo Brdo" }
+            ]
+        };
+
+        // Uklanjanje duplikata
+        function removeDuplicates(data) {
+            const seen = new Set();
+            return data.filter(dep => {
+                const key = `${dep.time}-${dep.vehicle}-${dep.line}`;
+                if (seen.has(key)) {
+                    return false;
+                }
+                seen.add(key);
+                return true;
+            });
+        }
+
+        scheduleData.banovoToBarajevo = removeDuplicates(scheduleData.banovoToBarajevo);
+        scheduleData.barajevoToBanovo = removeDuplicates(scheduleData.barajevoToBanovo);
+
+        let activeTooltip = null;
+
+        // Generisanje reda vožnje
+        function generateSchedule(containerId, data, direction) {
+            const container = document.getElementById(containerId);
+            
+            const hourlyData = {};
+            data.forEach(dep => {
+                const [hour, minute] = dep.time.split(':');
+                if (!hourlyData[hour]) {
+                    hourlyData[hour] = [];
+                }
+                hourlyData[hour].push({ minute, vehicle: dep.vehicle, line: dep.line, destination: dep.destination });
+            });
+
+            // Sortiranje po satima
+            const sortedHours = Object.keys(hourlyData).sort((a, b) => {
+                return parseInt(a) - parseInt(b);
+            });
+
+            let html = '';
+            sortedHours.forEach(hour => {
+                const minutes = hourlyData[hour].sort((a, b) => parseInt(a.minute) - parseInt(b.minute));
+                html += `
+                    <div class="hour-row">
+                        <div class="hour-cell">${hour}</div>
+                        <div class="minutes-cell">
+                            ${minutes.map(m => `
+                                <span class="minute-badge line-${m.line.replace(/\s/g, '')}" 
+                                      data-time="${hour}:${m.minute}" 
+                                      data-vehicle="${m.vehicle}"
+                                      data-line="${m.line}"
+                                      data-destination="${m.destination}"
+                                      onclick="toggleTooltip(event, this)">
+                                    <span class="minute">${m.minute}</span>
+                                    <span class="line-tag">${m.line}</span>
+                                    <div class="tooltip">
+                                        <div class="tooltip-vehicle">${m.vehicle}</div>
+                                        <div class="tooltip-line">Linija ${m.line}</div>
+                                        <div class="tooltip-destination">→ ${m.destination}</div>
+                                    </div>
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Statistike
+        function updateStats() {
+            const totalDepartures = scheduleData.banovoToBarajevo.length + scheduleData.barajevoToBanovo.length;
+            document.getElementById('totalDepartures').textContent = totalDepartures;
+
+            const allVehicles = new Set();
+            [...scheduleData.banovoToBarajevo, ...scheduleData.barajevoToBanovo].forEach(dep => {
+                allVehicles.add(dep.vehicle);
+            });
+            document.getElementById('totalVehicles').textContent = allVehicles.size;
+        }
+
+        // Toggle tooltip
+        function toggleTooltip(event, element) {
+            event.stopPropagation();
+            
+            const tooltip = element.querySelector('.tooltip');
+            
+            // Zatvori prethodni tooltip
+            if (activeTooltip && activeTooltip !== tooltip) {
+                activeTooltip.classList.remove('show');
+            }
+            
+            // Toggle trenutni
+            tooltip.classList.toggle('show');
+            activeTooltip = tooltip.classList.contains('show') ? tooltip : null;
+        }
+
+        // Zatvori tooltip klikom bilo gde
+        document.addEventListener('click', function(e) {
+            if (activeTooltip && ! e.target.closest('.minute-badge')) {
+                activeTooltip.classList.remove('show');
+                activeTooltip = null;
+            }
+        });
+
+        // Pretraga vozila
+        function searchVehicle() {
+            const query = document.getElementById('vehicleSearch').value.trim().toUpperCase();
+            const resultsContainer = document.getElementById('searchResults');
+
+            if (!query) {
+                resultsContainer.classList.remove('show');
+                return;
+            }
+
+            const allVehicles = new Map();
+            
+            [...scheduleData.banovoToBarajevo, ...scheduleData.barajevoToBanovo].forEach(dep => {
+                if (dep.vehicle.toUpperCase().includes(query)) {
+                    if (!allVehicles.has(dep.vehicle)) {
+                        allVehicles.set(dep.vehicle, 0);
+                    }
+                    allVehicles.set(dep.vehicle, allVehicles.get(dep.vehicle) + 1);
+                }
+            });
+
+            if (allVehicles.size === 0) {
+                resultsContainer.innerHTML = '<div class="search-result-item"><span>Vozilo nije pronađeno</span></div>';
+                resultsContainer.classList.add('show');
+                return;
+            }
+
+            const sortedVehicles = [...allVehicles.entries()].sort((a, b) => b[1] - a[1]);
+
+            let html = '';
+            sortedVehicles.forEach(([vehicle, count]) => {
+                html += `
+                    <div class="search-result-item" onclick="highlightVehicle('${vehicle}')">
+                        <span class="result-vehicle">${vehicle}</span>
+                        <span class="result-count">${count} polazaka</span>
+                    </div>
+                `;
+            });
+
+            resultsContainer.innerHTML = html;
+            resultsContainer.classList.add('show');
+        }
+
+        // Označavanje polazaka vozila
+        function highlightVehicle(vehicle) {
+            document.querySelectorAll('.minute-badge').forEach(b => {
+                b.classList.remove('highlighted');
+            });
+
+            document.querySelectorAll('.minute-badge').forEach(b => {
+                if (b.dataset.vehicle === vehicle) {
+                    b.classList.add('highlighted');
+                }
+            });
+
+            document.getElementById('searchResults').classList.remove('show');
+            document.getElementById('vehicleSearch').value = vehicle;
+        }
+
+        function clearSearch() {
+            document.getElementById('vehicleSearch').value = '';
+            document.getElementById('searchResults').classList.remove('show');
+            document.querySelectorAll('.minute-badge').forEach(b => {
+                b.classList.remove('highlighted');
+            });
+        }
+
+        // Enter za pretragu
+        document.getElementById('vehicleSearch').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchVehicle();
+        });
+
+        // Live pretraga
+        document.getElementById('vehicleSearch').addEventListener('input', function() {
+            if (this.value.length >= 2) {
+                searchVehicle();
+            } else {
+                document.getElementById('searchResults').classList.remove('show');
+            }
+        });
+
+        // Inicijalizacija
+        generateSchedule('schedule-banovo', scheduleData.banovoToBarajevo, 'Banovo Brdo → Barajevo');
+        generateSchedule('schedule-barajevo', scheduleData.barajevoToBanovo, 'Barajevo → Banovo Brdo');
+        updateStats();
+    </script>
+</body>
+</html>
