@@ -706,7 +706,15 @@
                 hourlyData[hour].push({ minute, vehicle: dep.vehicle, line: dep.line });
             });
 
-
+            // Sortiranje - 00, 01, 02, 03 idu na kraj (posle 23)
+            const sortedHours = Object.keys(hourlyData).sort((a, b) => {
+                const hourA = parseInt(a);
+                const hourB = parseInt(b);
+                // Sati 00-03 se tretiraju kao 24-27 za sortiranje
+                const adjustedA = hourA < 4 ? hourA + 24 : hourA;
+                const adjustedB = hourB < 4 ? hourB + 24 : hourB;
+                return adjustedA - adjustedB;
+            });
 
             let html = '';
             sortedHours.forEach(hour => {
