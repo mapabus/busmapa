@@ -86,7 +86,7 @@ export default async function handler(req, res) {
                 properties: {
                   title: sheetName,
                   gridProperties: {
-                    rowCount: 30000,
+                    rowCount: 100000,
                     columnCount: 6,
                     frozenRowCount: 1
                   }
