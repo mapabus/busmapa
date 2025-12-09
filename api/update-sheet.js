@@ -61,7 +61,6 @@ export default async function handler(req, res) {
       second: '2-digit'
     });
 
-    // KLJUČNA PROMENA: Uvek koristi sheet "Baza"
     const sheetName = 'Baza';
     console.log(`Target sheet: ${sheetName}`);
 
@@ -156,54 +155,64 @@ export default async function handler(req, res) {
       console.log('No existing data:', readError.message);
     }
 
-    // Kreiraj mapu postojećih vozila
-    const existingVehicles = new Map();
+    // ========================================
+    // NOVA LOGIKA: Kompozitni ključ = Vozilo + Polazak
+    // ========================================
+    const existingTrips = new Map();
     existingData.forEach((row, index) => {
-      if (row[0]) {
-        existingVehicles.set(row[0], {
-          rowIndex: index + 2,
+      if (row[0] && row[2]) { // Proveri da postoje Vozilo i Polazak
+        const tripKey = `${row[0]}_${row[2]}`; // npr."101_04:00"
+        existingTrips.set(tripKey, {
+          rowIndex: index + 2, // Row index u Google Sheets (počinje od 2)
           data: row
         });
       }
     });
 
-    // Obrađuj sva vozila
-    const finalData = [...existingData];
+    console.log(`Mapped ${existingTrips.size} unique trips from existing data`);
+
+    // Obrađuj sva vozila iz API-ja
+    const finalData = [...existingData]; // Kopiraj SVE postojeće redove
     let newCount = 0;
     let updateCount = 0;
 
     vehicles.forEach(v => {
       const vehicleLabel = v.vehicleLabel || '';
+      const startTime = v.startTime || '';
+      const tripKey = `${vehicleLabel}_${startTime}`; // Jedinstveni ključ polaska
+      
       const rowData = [
         vehicleLabel,
         v.routeDisplayName || '',
-        v.startTime || '',
+        startTime,
         v.destName || '',
         timestamp,
         timestamp.split(',')[0].trim()
       ];
 
-      if (existingVehicles.has(vehicleLabel)) {
-        // Ažuriraj postojeći red
-        const existingRow = existingVehicles.get(vehicleLabel);
-        const arrayIndex = existingRow.rowIndex - 2;
+      if (existingTrips.has(tripKey)) {
+        // Polazak već postoji → AŽURIRAJ samo vreme upisa
+        const existingTrip = existingTrips.get(tripKey);
+        const arrayIndex = existingTrip.rowIndex - 2;
         finalData[arrayIndex] = rowData;
         updateCount++;
+        console.log(`  ↻ Updated: ${tripKey}`);
       } else {
-        // Dodaj novi red
+        // Novi polazak → DODAJ kao novi red
         finalData.push(rowData);
         newCount++;
-        existingVehicles.set(vehicleLabel, { 
+        existingTrips.set(tripKey, { 
           rowIndex: finalData.length + 1, 
           data: rowData 
         });
+        console.log(`  ✓ Added new: ${tripKey}`);
       }
     });
 
-    console.log(`Processing: ${updateCount} updates, ${newCount} new vehicles`);
+    console.log(`Processing: ${updateCount} updates, ${newCount} new departures`);
 
     // BATCH UPIS
-    const BATCH_SIZE = 500;
+    const BATCH_SIZE = 2500;
     const batches = [];
     
     for (let i = 0; i < finalData.length; i += BATCH_SIZE) {
@@ -238,28 +247,36 @@ export default async function handler(req, res) {
       }
     }
 
-    // Sortiranje
+    // Sortiranje po vozilu, pa po polasku
     try {
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId,
         resource: {
-          requests: [{
-            sortRange: {
-              range: {
-                sheetId: sheetId,
-                startRowIndex: 1,
-                startColumnIndex: 0,
-                endColumnIndex: 6,
+          requests: [
+            {
+              sortRange: {
+                range: {
+                  sheetId: sheetId,
+                  startRowIndex: 1,
+                  startColumnIndex: 0,
+                  endColumnIndex: 6,
+                },
+                sortSpecs: [
+                  {
+                    dimensionIndex: 0, // Prvo po vozilu
+                    sortOrder: 'ASCENDING',
+                  },
+                  {
+                    dimensionIndex: 2, // Zatim po polasku
+                    sortOrder: 'ASCENDING',
+                  }
+                ],
               },
-              sortSpecs: [{
-                dimensionIndex: 0,
-                sortOrder: 'ASCENDING',
-              }],
-            },
-          }],
+            }
+          ],
         },
       });
-      console.log('✓ Data sorted successfully');
+      console.log('✓ Data sorted by vehicle and departure time');
     } catch (sortError) {
       console.warn('Sort error (non-critical):', sortError.message);
     }
@@ -268,9 +285,10 @@ export default async function handler(req, res) {
 
     res.status(200).json({ 
       success: true, 
-      newVehicles: newCount,
-      updatedVehicles: updateCount,
+      newDepartures: newCount,
+      updatedDepartures: updateCount,
       totalProcessed: vehicles.length,
+      totalRowsInSheet: finalData.length,
       timestamp,
       sheetUsed: sheetName,
       batchesWritten: batches.length
