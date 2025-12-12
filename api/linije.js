@@ -6,15 +6,15 @@ export default function handler(req, res) {
 <script src="/auth-check.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Linije - MapLibre</title>
+    <title>Linije</title>
  
-    <link href='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css' rel='stylesheet' />
-    <script src='https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js'></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
  
     <style>
         body { margin: 0; padding: 0; font-family: sans-serif; overflow: hidden; background: #eee; }
         #map { height: 100vh; width: 100%; z-index: 1; }
  
+
         .controls {
             position: absolute; top: 10px; right: 10px; z-index: 1000;
             background: rgba(255, 255, 255, 0.98); padding: 15px;
@@ -27,8 +27,7 @@ export default function handler(req, res) {
  
         .input-group { display: flex; gap: 5px; margin-bottom: 10px; }
         input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none; font-size: 16px; }
-        button#addBtn { padding: 0 15px; background: #2980b9; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 18px; cursor: pointer; }
-        button#addBtn:hover { background: #3498db; }
+        button#addBtn { padding: 0 15px; background: #2980b9; color: white; border: none; border-radius: 6px; font-weight: bold; font-size: 18px; }
  
         #activeLines { list-style: none; padding: 0; margin: 0; }
         .line-item {
@@ -38,14 +37,12 @@ export default function handler(req, res) {
             font-weight: 600; font-size: 14px;
         }
         .remove-btn { color: #e74c3c; font-size: 20px; line-height: 1; padding-left: 10px; cursor: pointer; }
-        .remove-btn:hover { color: #c0392b; }
  
         .status-bar { margin-top: 10px; font-size: 11px; color: #666; border-top: 1px solid #eee; padding-top: 8px; }
  
-        /* MapLibre Marker Styles */
-        .bus-icon-container { background: none; border: none; cursor: pointer; }
+
+        .bus-icon-container { background: none; border: none; }
         .bus-wrapper { position: relative; width: 50px; height: 56px; transition: all 0.3s ease; }
-        .bus-wrapper:hover { transform: scale(1.1); }
  
         .bus-circle {
             width: 32px; height: 32px; border-radius: 50%; 
@@ -72,6 +69,7 @@ export default function handler(req, res) {
             z-index: 19;
         }
  
+
         .bus-arrow {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
             transition: transform 0.5s linear;
@@ -84,15 +82,10 @@ export default function handler(req, res) {
             position: absolute; top: 0px; left: 50%; transform: translateX(-50%);
         }
  
-        /* MapLibre Popup Styles */
-        .maplibregl-popup-content {
-            padding: 12px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
         .popup-content { font-size: 13px; line-height: 1.4; }
         .popup-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
         .popup-label { font-weight: bold; color: #555; }
+
 
         .destination-marker {
             width: 24px;
@@ -101,7 +94,6 @@ export default function handler(req, res) {
             transform: rotate(-45deg);
             border: 3px solid white;
             box-shadow: 0 3px 8px rgba(0,0,0,0.4);
-            cursor: pointer;
         }
         .destination-marker-inner {
             width: 100%;
@@ -138,47 +130,49 @@ export default function handler(req, res) {
  
     <div id="map"></div>
  
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // ============================================
-        // MAPLIBRE INICIJALIZACIJA
-        // ============================================
-        const map = new maplibregl.Map({
-            container: 'map',
-            style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-            center: [20.4612, 44.8125], // [lng, lat] - OBRNUTO od Leaflet!
-            zoom: 13,
-            attributionControl: true
-        });
 
-        // Dodaj zoom kontrole
-        map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
+        const map = L.map('map', { zoomControl: false }).setView([44.8125, 20.4612], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; CARTO'
+        }).addTo(map);
  
-        // ============================================
-        // GLOBALNE PROMENLJIVE
-        // ============================================
-        let busMarkers = {}; // Čuvamo MapLibre markere
-        let destinationMarkers = {};
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+ 
+        const busLayer = L.layerGroup().addTo(map);
+        const destinationLayer = L.layerGroup().addTo(map);
+        const routeLayer = L.layerGroup().addTo(map);
+ 
         let izabraneLinije = [];
         let timerId = null;
         let countdownId = null;
         let refreshTime = 60;
+ 
         let timeLeft = 0;
+ 
+
         let directionColorMap = {};
+
+
         let stationsMap = {};
+ 
+
         let routeNamesMap = {};
+
         let shapesData = {};
         let vehicleShapeMap = {};
         let shapeToColorMapGlobal = {};
  
+
         const colors = [
             '#e74c3c', '#3498db', '#9b59b6', '#2ecc71', '#f1c40f', 
             '#e67e22', '#1abc9c', '#34495e', '#d35400', '#c0392b',
             '#2980b9', '#8e44ad', '#27ae60', '#f39c12', '#16a085'
         ];
 
-        // ============================================
-        // HELPER FUNKCIJE
-        // ============================================
+
+        
         function normalizeStopId(stopId) {
             if (typeof stopId === 'string' && stopId.length === 5 && stopId.startsWith('2')) {
                 let normalized = stopId.substring(1);
@@ -215,27 +209,24 @@ export default function handler(req, res) {
             return R * c;
         }
 
-        function calculateBearing(startLat, startLng, destLat, destLng) {
-            const y = Math.sin((destLng - startLng) * Math.PI / 180) * Math.cos(destLat * Math.PI / 180);
-            const x = Math.cos(startLat * Math.PI / 180) * Math.sin(destLat * Math.PI / 180) -
-                      Math.sin(startLat * Math.PI / 180) * Math.cos(destLat * Math.PI / 180) * Math.cos((destLng - startLng) * Math.PI / 180);
-            const brng = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-            return brng;
-        }
 
+        
         function findRouteId(userInput) {
             const normalized = userInput.trim().toUpperCase();
             
+
             if (routeNamesMap[normalized]) {
                 return normalized;
             }
             
+
             for (const [apiId, displayName] of Object.entries(routeNamesMap)) {
                 if (displayName.toUpperCase() === normalized) {
                     return apiId;
                 }
             }
             
+
             const normalizedInput = normalizeRouteId(normalized);
             if (routeNamesMap[normalizedInput]) {
                 return normalizedInput;
@@ -244,17 +235,8 @@ export default function handler(req, res) {
             return null;
         }
 
-        function padRouteId(routeId) {
-            const numericId = parseInt(routeId, 10);
-            if (!isNaN(numericId) && routeId === numericId.toString() && routeId.length <= 3) {
-                return numericId.toString().padStart(5, '0');
-            }
-            return routeId;
-        }
 
-        // ============================================
-        // UČITAVANJE PODATAKA
-        // ============================================
+        
         async function loadStations() {
             try {
                 const response = await fetch('/api/stations');
@@ -266,6 +248,10 @@ export default function handler(req, res) {
             }
         }
 
+        loadStations();
+
+
+        
         async function loadRouteNames() {
             try {
                 const response = await fetch('/route-mapping.json');
@@ -280,11 +266,14 @@ export default function handler(req, res) {
             }
         }
 
+        loadRouteNames();
+
+
         async function loadShapes() {
             try {
                const [shapesResponse, shapesGradskeResponse] = await Promise.all([
-                    fetch('/data/shapes.txt'),
-                    fetch('/data/shapes_gradske.txt')
+  fetch('/data/shapes.txt'),
+  fetch('/data/shapes_gradske.txt')
                 ]);
                 
                 const shapesText = await shapesResponse.text();
@@ -330,14 +319,16 @@ export default function handler(req, res) {
             }
         }
 
-        // Inicijalizuj podatke
-        loadStations();
-        loadRouteNames();
         loadShapes();
 
-        // ============================================
-        // MAPLIBRE - CRTANJE RUTA
-        // ============================================
+        function padRouteId(routeId) {
+            const numericId = parseInt(routeId, 10);
+            if (!isNaN(numericId) && routeId === numericId.toString() && routeId.length <= 3) {
+                return numericId.toString().padStart(5, '0');
+            }
+            return routeId;
+        }
+
         function determineShapeColorByDestination(shapeKey, routeId, vehicleDestinations) {
             const shapePoints = shapesData[shapeKey];
             if (!shapePoints || shapePoints.length === 0) return '#95a5a6';
@@ -377,18 +368,11 @@ export default function handler(req, res) {
         }
 
         function drawAllRoutes(vehicleDestinations) {
-            // Ukloni postojeće rute
-            if (map.getLayer('routes')) {
-                map.removeLayer('routes');
-            }
-            if (map.getSource('routes')) {
-                map.removeSource('routes');
-            }
+            routeLayer.clearLayers();
             
             if (izabraneLinije.length === 0) return;
             
-            let allFeatures = [];
-            let allCoordinates = [];
+            let allBounds = [];
             
             izabraneLinije.forEach(routeId => {
                 const paddedRouteId = padRouteId(routeId);
@@ -416,213 +400,38 @@ export default function handler(req, res) {
                     
                     console.log(\`Drawing shape \${shapeKey} with color \${shapeColor}\`);
                     
-                    // MapLibre koristi [lng, lat] format!
-                    const coordinates = shapePoints.map(point => [point.lon, point.lat]);
+                    const latLngs = shapePoints.map(point => [point.lat, point.lon]);
                     
-                    allFeatures.push({
-                        type: 'Feature',
-                        properties: {
-                            color: shapeColor
-                        },
-                        geometry: {
-                            type: 'LineString',
-                            coordinates: coordinates
-                        }
+                    const polyline = L.polyline(latLngs, {
+                        color: shapeColor,
+                        weight: 4,
+                        opacity: 0.6,
+                        smoothFactor: 1
                     });
                     
-                    allCoordinates.push(...coordinates);
+                    polyline.addTo(routeLayer);
+                    allBounds.push(polyline.getBounds());
                 });
             });
             
-            if (allFeatures.length > 0) {
-                // Dodaj source
-                map.addSource('routes', {
-                    type: 'geojson',
-                    data: {
-                        type: 'FeatureCollection',
-                        features: allFeatures
-                    }
-                });
+            if (allBounds.length > 0) {
+                const combinedBounds = allBounds.reduce((acc, bounds) => {
+                    return acc.extend(bounds);
+                }, allBounds[0]);
                 
-                // Dodaj layer
-                map.addLayer({
-                    id: 'routes',
-                    type: 'line',
-                    source: 'routes',
-                    paint: {
-                        'line-color': ['get', 'color'],
-                        'line-width': 4,
-                        'line-opacity': 0.6
-                    }
+                map.fitBounds(combinedBounds, {
+                    padding: [50, 50]
                 });
-                
-                // Fit bounds
-                if (allCoordinates.length > 0) {
-                    const bounds = allCoordinates.reduce((bounds, coord) => {
-                        return bounds.extend(coord);
-                    }, new maplibregl.LngLatBounds(allCoordinates[0], allCoordinates[0]));
-                    
-                    map.fitBounds(bounds, {
-                        padding: 50
-                    });
-                }
             }
         }
+ 
 
-        // ============================================
-        // MAPLIBRE - CRTANJE VOZILA
-        // ============================================
-        function crtajVozila(vehicles, vehicleDestinations) {
-            // Obriši stare markere
-            Object.values(busMarkers).forEach(marker => marker.remove());
-            Object.values(destinationMarkers).forEach(marker => marker.remove());
-            busMarkers = {};
-            destinationMarkers = {};
  
-            const vozila = vehicles.filter(v => {
-                const routeId = normalizeRouteId(v.routeId);
-                return izabraneLinije.includes(routeId);
-            });
-
-            let destinations = new Set();
-            let destinationInfo = {};
- 
-            vozila.forEach(v => {
-                const route = normalizeRouteId(v.routeId);
-                const vehicleId = v.id;
-                
-                const destId = vehicleDestinations[vehicleId] || "Unknown";
-                
-                const normalizedId = normalizeStopId(destId);
-                const uniqueDirKey = \`\${route}_\${destId}\`;
-                
-                const color = directionColorMap[uniqueDirKey];
-                
-                destinations.add(destId);
-                destinationInfo[destId] = {
-                    color: color,
-                    normalizedId: normalizedId,
-                    route: route
-                };
-            });
-
-            // Crtaj destination markere
-            destinations.forEach(destId => {
-                const info = destinationInfo[destId];
-                const station = stationsMap[info.normalizedId];
-                
-                if (station && station.coords) {
-                    const destHtml = \`
-                        <div class="destination-marker" style="background: \${info.color};">
-                            <div class="destination-marker-inner">📍</div>
-                        </div>
-                    \`;
-                    
-                    const el = document.createElement('div');
-                    el.innerHTML = destHtml;
-                    
-                    const destPopup = new maplibregl.Popup({ offset: 25 })
-                        .setHTML(\`
-                            <div class="popup-content">
-                                <div class="popup-row"><span class="popup-label">Stanica:</span> <b>\${station.name}</b></div>
-                                <div class="popup-row"><span class="popup-label">ID:</span> \${destId}</div>
-                            </div>
-                        \`);
-                    
-                    const marker = new maplibregl.Marker({
-                        element: el.firstElementChild,
-                        anchor: 'bottom'
-                    })
-                    .setLngLat([station.coords[1], station.coords[0]]) // [lng, lat]
-                    .setPopup(destPopup)
-                    .addTo(map);
-                    
-                    destinationMarkers[destId] = marker;
-                }
-            });
- 
-            // Crtaj vozila
-            vozila.forEach(v => {
-                const id = v.id;
-                const label = v.label;
-                const route = normalizeRouteId(v.routeId);
-                const routeDisplayName = getRouteDisplayName(v.routeId);
-                const startTime = v.startTime || "N/A";
-                const lat = v.lat;
-                const lon = v.lon;
- 
-                const destId = vehicleDestinations[id] || "Unknown";
-                const normalizedId = normalizeStopId(destId);
-                const station = stationsMap[normalizedId];
-                const destName = station ? station.name : destId;
-                
-                const uniqueDirKey = \`\${route}_\${destId}\`;
-                const color = directionColorMap[uniqueDirKey];
- 
-                let rotation = 0;
-                let hasAngle = false;
-
-                if (station && station.coords) {
-                    rotation = calculateBearing(lat, lon, station.coords[0], station.coords[1]);
-                    hasAngle = true;
-                }
- 
-                const arrowDisplay = hasAngle ? 'block' : 'none';
- 
-                const iconHtml = \`
-                    <div class="bus-wrapper">
-                        <div class="bus-arrow" style="transform: rotate(\${rotation}deg); display: \${arrowDisplay};">
-                            <div class="arrow-head" style="border-bottom-color: \${color}; filter: brightness(0.6);"></div>
-                        </div>
-                        <div class="bus-circle" style="background: \${color};">
-                            \${routeDisplayName}
-                        </div>
-                        <div class="bus-garage-label">\${label}</div>
-                    </div>
-                \`;
- 
-                const el = document.createElement('div');
-                el.className = 'bus-icon-container';
-                el.innerHTML = iconHtml;
- 
-                const popupContent = \`
-                    <div class="popup-content">
-                        <div class="popup-row"><span class="popup-label">Linija:</span> <b>\${routeDisplayName}</b></div>
-                        <div class="popup-row"><span class="popup-label">Garažni:</span> \${label}</div>
-                        <hr style="margin: 5px 0; border-color:#eee;">
-                        <div class="popup-row"><span class="popup-label">Polazak:</span> <b>\${startTime}</b></div>
-                        <div class="popup-row"><span class="popup-label">Smer (ide ka):</span> <span style="color:\${color}; font-weight:bold;">\${destName}</span></div>
-                    </div>
-                \`;
- 
-                const popup = new maplibregl.Popup({ offset: 25 })
-                    .setHTML(popupContent);
-
-                const marker = new maplibregl.Marker({
-                    element: el,
-                    anchor: 'bottom'
-                })
-                .setLngLat([lon, lat]) // [lng, lat]
-                .setPopup(popup)
-                .addTo(map);
-                
-                busMarkers[label] = marker;
-            });
-        }
-
-        // ============================================
-        // API - OSVEŽAVANJE PODATAKA
-        // ============================================
         async function osveziPodatke() {
             if (izabraneLinije.length === 0) {
-                Object.values(busMarkers).forEach(m => m.remove());
-                Object.values(destinationMarkers).forEach(m => m.remove());
-                busMarkers = {};
-                destinationMarkers = {};
-                
-                if (map.getLayer('routes')) map.removeLayer('routes');
-                if (map.getSource('routes')) map.removeSource('routes');
-                
+                busLayer.clearLayers();
+                destinationLayer.clearLayers();
+                routeLayer.clearLayers();
                 directionColorMap = {};
                 shapeToColorMapGlobal = {};
                 startTimer(0); 
@@ -633,6 +442,7 @@ export default function handler(req, res) {
             document.getElementById('statusText').style.color = "#e67e22";
  
             try {
+
                 const response = await fetch('/api/vehicles', { 
                     method: 'GET',
                     cache: 'no-store',
@@ -647,6 +457,7 @@ export default function handler(req, res) {
                 const data = await response.json();
  
                 if (data && data.vehicles) {
+
                     const vehicleDestinations = {};
                     vehicleShapeMap = {};
                     
@@ -700,10 +511,145 @@ export default function handler(req, res) {
  
             startTimer(refreshTime);
         }
+ 
+        function crtajVozila(vehicles, vehicleDestinations) {
+            busLayer.clearLayers();
+            destinationLayer.clearLayers();
+ 
+           
+            const vozila = vehicles.filter(v => {
+                const routeId = normalizeRouteId(v.routeId);
+                return izabraneLinije.includes(routeId);
+            });
 
-        // ============================================
-        // UI KONTROLE
-        // ============================================
+  
+            let destinations = new Set();
+            let destinationInfo = {};
+ 
+            vozila.forEach(v => {
+                const route = normalizeRouteId(v.routeId);
+                const vehicleId = v.id;
+                
+                const destId = vehicleDestinations[vehicleId] || "Unknown";
+                
+                const normalizedId = normalizeStopId(destId);
+                const uniqueDirKey = \`\${route}_\${destId}\`;
+                
+                const color = directionColorMap[uniqueDirKey];
+                
+                destinations.add(destId);
+                destinationInfo[destId] = {
+                    color: color,
+                    normalizedId: normalizedId,
+                    route: route
+                };
+            });
+
+     
+            destinations.forEach(destId => {
+                const info = destinationInfo[destId];
+                const station = stationsMap[info.normalizedId];
+                
+                if (station && station.coords) {
+                    const destHtml = \`
+                        <div class="destination-marker" style="background: \${info.color};">
+                            <div class="destination-marker-inner">📍</div>
+                        </div>
+                    \`;
+                    
+                    const destIcon = L.divIcon({
+                        className: 'destination-icon-container',
+                        html: destHtml,
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 24]
+                    });
+                    
+                    const destPopup = \`
+                        <div class="popup-content">
+                            <div class="popup-row"><span class="popup-label">Stanica:</span> <b>\${station.name}</b></div>
+                            <div class="popup-row"><span class="popup-label">ID:</span> \${destId}</div>
+                        </div>
+                    \`;
+                    
+                    L.marker(station.coords, {icon: destIcon})
+                        .bindPopup(destPopup)
+                        .addTo(destinationLayer);
+                }
+            });
+ 
+
+            vozila.forEach(v => {
+                const id = v.id;
+                const label = v.label;
+                const route = normalizeRouteId(v.routeId);
+                const routeDisplayName = getRouteDisplayName(v.routeId);
+                const startTime = v.startTime || "N/A";
+                const lat = v.lat;
+                const lon = v.lon;
+ 
+                const destId = vehicleDestinations[id] || "Unknown";
+                const normalizedId = normalizeStopId(destId);
+                const station = stationsMap[normalizedId];
+                const destName = station ? station.name : destId;
+                
+                const uniqueDirKey = \`\${route}_\${destId}\`;
+                const color = directionColorMap[uniqueDirKey];
+ 
+                let rotation = 0;
+                let hasAngle = false;
+
+                if (station && station.coords) {
+                    rotation = calculateBearing(lat, lon, station.coords[0], station.coords[1]);
+                    hasAngle = true;
+                }
+ 
+                const arrowDisplay = hasAngle ? 'block' : 'none';
+ 
+                const iconHtml = \`
+                    <div class="bus-wrapper">
+                        <div class="bus-arrow" style="transform: rotate(\${rotation}deg); display: \${arrowDisplay};">
+                            <div class="arrow-head" style="border-bottom-color: \${color}; filter: brightness(0.6);"></div>
+                        </div>
+                        <div class="bus-circle" style="background: \${color};">
+                            \${routeDisplayName}
+                        </div>
+                        <div class="bus-garage-label">\${label}</div>
+                    </div>
+                \`;
+ 
+                const icon = L.divIcon({
+                    className: 'bus-icon-container',
+                    html: iconHtml,
+                    iconSize: [50, 56],
+                    iconAnchor: [25, 28]
+                });
+ 
+                const popupContent = \`
+                    <div class="popup-content">
+                        <div class="popup-row"><span class="popup-label">Linija:</span> <b>\${routeDisplayName}</b></div>
+                        <div class="popup-row"><span class="popup-label">Garažni:</span> \${label}</div>
+                        <hr style="margin: 5px 0; border-color:#eee;">
+                        <div class="popup-row"><span class="popup-label">Polazak:</span> <b>\${startTime}</b></div>
+                        <div class="popup-row"><span class="popup-label">Smer (ide ka):</span> <span style="color:\${color}; font-weight:bold;">\${destName}</span></div>
+                    </div>
+                \`;
+ 
+                L.marker([lat, lon], {icon: icon})
+                    .bindPopup(popupContent)
+                    .addTo(busLayer);
+            });
+        }
+ 
+        function calculateBearing(startLat, startLng, destLat, destLng) {
+            const y = Math.sin((destLng - startLng) * Math.PI / 180) * Math.cos(destLat * Math.PI / 180);
+            const x = Math.cos(startLat * Math.PI / 180) * Math.sin(destLat * Math.PI / 180) -
+                      Math.sin(startLat * Math.PI / 180) * Math.cos(destLat * Math.PI / 180) * Math.cos((destLng - startLng) * Math.PI / 180);
+            const brng = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+            return brng;
+        }
+ 
+
+ 
         function dodajLiniju() {
             const input = document.getElementById('lineInput');
             const val = input.value.trim();
@@ -714,6 +660,7 @@ export default function handler(req, res) {
                 return; 
             }
             
+
             const routeId = findRouteId(val);
             if (!routeId) {
                 alert(\`Linija "\${val}" nije pronađena! Pokušaj sa drugim nazivom.\`);
@@ -801,45 +748,60 @@ export default function handler(req, res) {
             }, seconds * 1000);
         }
 
-        // ============================================
-        // AUTO-UČITAVANJE LINIJE IZ URL-a
-        // ============================================
-        let urlLineLoaded = false;
+ function checkUrlParameter() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const lineParam = urlParams.get('line');
+    
+    if (lineParam) {
+        document.getElementById('lineInput').value = lineParam;
+        // Sačekaj da se učitaju route names pa dodaj liniju
+        setTimeout(() => {
+            dodajLiniju();
+        }, 1000);
+    }
+}
 
-        function checkUrlParameter() {
-            if (urlLineLoaded) return;
-            
-            const urlParams = new URLSearchParams(window.location.search);
-            const lineParam = urlParams.get('line');
-            
-            if (lineParam) {
-                const waitForRouteNames = setInterval(() => {
-                    if (Object.keys(routeNamesMap).length > 0) {
-                        clearInterval(waitForRouteNames);
-                        
-                        if (urlLineLoaded) return;
-                        urlLineLoaded = true;
-                        
-                        const routeId = findRouteId(lineParam);
-                        if (routeId && !izabraneLinije.includes(routeId)) {
-                            document.getElementById('lineInput').value = lineParam;
-                            dodajLiniju();
-                        }
-                        
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                    }
-                }, 200);
+// Pozovi pri učitavanju stranice
+setTimeout(checkUrlParameter, 1500);
+
+// ====== AUTOMATSKO UČITAVANJE LINIJE IZ URL-a ======
+let urlLineLoaded = false; // Flag da sprečimo duplo učitavanje
+
+function checkUrlParameter() {
+    if (urlLineLoaded) return; // Već učitano, izađi
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const lineParam = urlParams.get('line');
+    
+    if (lineParam) {
+        const waitForRouteNames = setInterval(() => {
+            if (Object.keys(routeNamesMap).length > 0) {
+                clearInterval(waitForRouteNames);
                 
-                setTimeout(() => {
-                    clearInterval(waitForRouteNames);
-                }, 5000);
+                if (urlLineLoaded) return; // Još jedna provera
+                urlLineLoaded = true;
+                
+                // Proveri da li je linija već dodata
+                const routeId = findRouteId(lineParam);
+                if (routeId && ! izabraneLinije.includes(routeId)) {
+                    document.getElementById('lineInput').value = lineParam;
+                    dodajLiniju();
+                }
+                
+                // Očisti URL parametar bez refresha
+                window.history.replaceState({}, document.title, window.location.pathname);
             }
-        }
+        }, 200);
+        
+        setTimeout(() => {
+            clearInterval(waitForRouteNames);
+        }, 5000);
+    }
+}
 
-        // Pokreni URL check kada se mapa učita
-        map.on('load', () => {
-            setTimeout(checkUrlParameter, 500);
-        });
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(checkUrlParameter, 500);
+});
     </script>
 </body>
 </html>
