@@ -205,30 +205,60 @@ export default async function handler(req, res) {
     console.log(`Deduplicated to ${vehicleLatestDeparture.size} unique vehicles`);
 
     // Grupisanje po linijama i smerovima - sada iz deduplikovanih podataka
-    const routeMap = {};
-    let processedToday = 0;
-    
-    vehicleLatestDeparture.forEach(entry => {
-      const { vozilo, linija, polazak, smer, timestamp } = entry;
-      
-      if (!routeMap[linija]) {
-        routeMap[linija] = {};
-      }
-      
-      if (!routeMap[linija][smer]) {
-        routeMap[linija][smer] = [];
-      }
-      
-      routeMap[linija][smer].push({
-        startTime: polazak,
-        vehicleLabel: vozilo,
-        timestamp: timestamp
-      });
-      
-      processedToday++;
-    });
+    // Grupisanje direktno - bez deduplikacije po vozilu
+const routeMap = {};
+let processedToday = 0;
 
-    console.log(`Processed ${processedToday} valid departures`);
+bazaRows.forEach(row => {
+  const vozilo = row[0] || '';
+  const linija = row[1] || '';
+  const polazak = row[2] || '';
+  const smer = row[3] || '';
+  const timestamp = row[4] || '';
+  const datumFull = row[5] || '';
+
+  if (!vozilo || !linija || !polazak || !smer) return;
+
+  const datum = datumFull.split(' ')[0].trim();
+  
+  // Samo današnja vozila
+  if (datum !== todayDate) return;
+  
+  const polazakParts = polazak.split(':');
+  const polazakHour = parseInt(polazakParts[0]) || 0;
+  const polazakMinute = parseInt(polazakParts[1]) || 0;
+  const polazakTimeInMinutes = polazakHour * 60 + polazakMinute;
+
+  // Specijalna logika za noćne linije
+  const isNightTime = currentHour >= 0 && currentHour < 1;
+  const isLateEvening = polazakHour >= 22;
+
+  if (isNightTime && isLateEvening) {
+    // OK, noćna linija
+  } else if (polazakTimeInMinutes > currentTimeInMinutes) {
+    // Skip budući polasci
+    return;
+  }
+
+  // Dodaj direktno u routeMap - BEZ deduplikacije
+  if (!routeMap[linija]) {
+    routeMap[linija] = {};
+  }
+  
+  if (!routeMap[linija][smer]) {
+    routeMap[linija][smer] = [];
+  }
+  
+  routeMap[linija][smer].push({
+    startTime: polazak,
+    vehicleLabel: vozilo,
+    timestamp: timestamp
+  });
+  
+  processedToday++;
+});
+
+console.log(`Processed ${processedToday} valid departures`);
     console.log(`Grouped into ${Object.keys(routeMap).length} routes`);
 
     if (Object.keys(routeMap).length === 0) {
