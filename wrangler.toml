@@ -3,28 +3,18 @@ main = "src/index.ts"
 compatibility_date = "2024-12-15"
 workers_dev = true
 
-[env. production]
-name = "busmapa-prod"
-routes = [
-  { pattern = "mapabus. workers.dev/*", zone_name = "mapabus.workers.dev" }
-]
-
 [build]
 command = "npm run build"
 cwd = "."
 
-[build.upload]
-format = "service-worker"
-
-[[analytics_engine_datasets]]
-binding = "ANALYTICS"
+[env.production]
+name = "busmapa-prod"
+routes = [
+  { pattern = "busmapa. workers.dev/*", zone_name = "busmapa. workers.dev" }
+]
 
 [env.production.vars]
 ENVIRONMENT = "production"
-
-[[env.production.r2_buckets]]
-binding = "BUCKET"
-bucket_name = "busmapa-data"
 
 [vars]
 ENVIRONMENT = "development"
