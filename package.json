@@ -1,14 +1,26 @@
 {
-  "name": "bus-tracker",
+  "name": "busmapa-workers",
   "version": "1.0.0",
-  "description": "Real-time bus tracking system",
-  "main": "index.js",
+  "description": "BusMapa na Cloudflare Workers",
+  "main": "src/index.ts",
   "scripts": {
-    "dev": "vercel dev",
-    "build": "echo 'Build complete'"
+    "dev": "wrangler dev",
+    "deploy": "wrangler publish",
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write .",
+    "lint": "eslint src/**/*.ts"
   },
   "dependencies": {
     "googleapis": "^128.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20231218.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^3.26.0",
+    "prettier": "^3.0.0",
+    "eslint": "^8.0.0"
   },
   "engines": {
     "node": ">=18.x"
