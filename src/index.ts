@@ -1,11 +1,11 @@
 interface Env {
   ANALYTICS?:  AnalyticsEngineDataset;
-  BUCKET?: R2Bucket;
+  BUCKET?:  R2Bucket;
   ENVIRONMENT?: string;
 }
 
 export default {
-  async fetch(request: Request, env: Env, ctx:  ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env:  Env, ctx: ExecutionContext): Promise<Response> {
     try {
       const url = new URL(request.url);
       const pathname = url.pathname;
@@ -143,7 +143,7 @@ function serveIndexHtml(): Response {
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background:  linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             display: flex;
@@ -179,7 +179,7 @@ function serveIndexHtml(): Response {
             font-size: 1.3em;
             font-weight: 600;
             border-radius:  12px;
-            box-shadow:  0 8px 16px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
             transition: all 0.3s ease;
             min-width: 250px;
         }
@@ -239,7 +239,7 @@ function serveBazaHtml(): Response {
 
         .header {
             background: white;
-            padding:  25px;
+            padding: 25px;
             border-radius:  12px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             margin-bottom: 20px;
@@ -247,7 +247,7 @@ function serveBazaHtml(): Response {
 
         h1 {
             color: #333;
-            font-size:  28px;
+            font-size: 28px;
         }
 
         .table-container {
@@ -269,7 +269,7 @@ function serveBazaHtml(): Response {
 
         th {
             padding: 15px;
-            text-align: left;
+            text-align:  left;
             font-weight: 600;
         }
 
