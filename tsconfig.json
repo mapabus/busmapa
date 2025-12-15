@@ -13,6 +13,6 @@
     "moduleResolution": "bundler",
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["src/**/*. ts"],
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
